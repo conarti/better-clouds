@@ -51,6 +51,11 @@
     "Упоминания",
     "Chats, contacts, bots",
     "Чаты, контакты, боты",
+    "Main",
+    "Chats",
+    "Contacts",
+    "Calls",
+    "SmartApps",
     "Бот"
   ],
   "placeholderPatterns": [
