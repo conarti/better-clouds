@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config'
 import { WxtVitest } from 'wxt/testing/vitest-plugin'
 
 const SOURCE_DIRECTORY_PATH = new URL('./src', import.meta.url).pathname
+const PROJECT_ROOT_PATH = new URL('.', import.meta.url).pathname
 
 export default defineConfig({
   test: {
@@ -20,9 +21,15 @@ export default defineConfig({
       },
       {
         resolve: {
+          /* Порядок важен: строковый алиас сопоставляется по началу пути, @@ длиннее @ */
           alias: {
+            '@@': PROJECT_ROOT_PATH,
             '@': SOURCE_DIRECTORY_PATH,
           },
+        },
+        /* Без предварительной сборки Vite перезагружает страницу теста на первом импорте */
+        optimizeDeps: {
+          include: ['postcss'],
         },
         test: {
           name: 'browser',

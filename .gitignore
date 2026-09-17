@@ -7,3 +7,4 @@ coverage/
 .DS_Store
 web-ext.config.ts
 **/__screenshots__/
+.vitest/
