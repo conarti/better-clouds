@@ -25,6 +25,28 @@ const FORBIDDEN_PROPERTY_NAMES = [
 const CONTAIN_PROPERTY_NAME = 'contain'
 const FORBIDDEN_CONTAIN_VALUES = ['layout', 'paint', 'strict', 'content']
 
+const CLIP_PATH_PROPERTY_NAME = 'clip-path'
+
+/**
+ * clip-path режет всех потомков, включая меню, вызванные из колонки, поэтому по умолчанию
+ * он запрещён вместе с остальными свойствами. Исключение одно: autohide-toolbar прячет им
+ * саму колонку. Значения перечислены поимённо, потому что резать нельзя только в раскрытом
+ * состоянии, а меню колонки открывается лишь в нём: inset(-100vh -100vw -100vh 0) уводит
+ * границы за пределы окна и ничего не обрезает, none снимает обрезку на устройствах без
+ * наведения, а inset(0 0 0 var(--better-clouds-toolbar-hidden-offset)) действует только
+ * в покое, когда колонка спрятана и открытых меню у неё нет.
+ */
+const ALLOWED_CLIP_PATH_VALUES_BY_FEATURE_ID: ReadonlyMap<string, readonly string[]> = new Map([
+  [
+    'autohide-toolbar',
+    [
+      'inset(0 0 0 var(--better-clouds-toolbar-hidden-offset))',
+      'inset(-100vh -100vw -100vh 0)',
+      'none',
+    ],
+  ],
+])
+
 const FEATURE_DIRECTORY_PATTERN = /^\.\/([^/]+)\//
 const PROBE_FEATURE_ID = 'styles-probe'
 const EMPTY_FIXTURE_HTML_LIST: readonly string[] = []
@@ -33,6 +55,10 @@ const NESTED_HAS_SELF_CHECK_STYLES = 'html:has(div:has(span)) { color: red; }'
 const UNSCOPED_SELF_CHECK_STYLES = 'div.unscoped-probe { color: red; }'
 const FORBIDDEN_PROPERTY_SELF_CHECK_STYLES =
   'html[data-probe] { transform: translateX(1px); contain: layout; }'
+const FORBIDDEN_DECLARATION_SELF_CHECK_COUNT = 2
+const ARBITRARY_CLIP_PATH_SELF_CHECK_STYLES = 'html[data-probe] { clip-path: circle(40%); }'
+const ALLOWED_CLIP_PATH_SELF_CHECK_STYLES = 'html[data-probe] { clip-path: none; }'
+const ALLOWED_CLIP_PATH_FEATURE_ID = 'autohide-toolbar'
 
 const featureStylesModules = import.meta.glob<string>('./*/styles.ts', {
   import: 'featureStyles',
@@ -59,7 +85,8 @@ function countSourceRules(cssText: string): number {
   return ruleCount
 }
 
-function findForbiddenDeclarations(cssText: string): string[] {
+function findForbiddenDeclarations(cssText: string, featureId: string): string[] {
+  const allowedClipPathValues = ALLOWED_CLIP_PATH_VALUES_BY_FEATURE_ID.get(featureId) ?? []
   const forbiddenDeclarations: string[] = []
   parse(cssText).walkDecls((declaration) => {
     if (FORBIDDEN_PROPERTY_NAMES.includes(declaration.prop)) {
@@ -69,6 +96,13 @@ function findForbiddenDeclarations(cssText: string): string[] {
     if (
       declaration.prop === CONTAIN_PROPERTY_NAME &&
       FORBIDDEN_CONTAIN_VALUES.some((forbiddenValue) => declaration.value.includes(forbiddenValue))
+    ) {
+      forbiddenDeclarations.push(declaration.toString())
+      return
+    }
+    if (
+      declaration.prop === CLIP_PATH_PROPERTY_NAME &&
+      !allowedClipPathValues.includes(declaration.value)
     ) {
       forbiddenDeclarations.push(declaration.toString())
     }
@@ -126,7 +160,7 @@ describe('стили функций', () => {
     })
 
     it('не задаёт свойств, ломающих меню внутри колонки', () => {
-      expect(findForbiddenDeclarations(featureStyles)).toEqual([])
+      expect(findForbiddenDeclarations(featureStyles, featureId)).toEqual([])
     })
 
     it('не содержит вложенного :has()', () => {
@@ -148,6 +182,26 @@ describe('стили функций', () => {
   })
 
   it('самопроверка: запрещённые свойства находятся', () => {
-    expect(findForbiddenDeclarations(FORBIDDEN_PROPERTY_SELF_CHECK_STYLES)).toHaveLength(2)
+    expect(
+      findForbiddenDeclarations(FORBIDDEN_PROPERTY_SELF_CHECK_STYLES, PROBE_FEATURE_ID),
+    ).toHaveLength(FORBIDDEN_DECLARATION_SELF_CHECK_COUNT)
+  })
+
+  it('самопроверка: произвольный clip-path находится даже у функции с исключением', () => {
+    expect(
+      findForbiddenDeclarations(
+        ARBITRARY_CLIP_PATH_SELF_CHECK_STYLES,
+        ALLOWED_CLIP_PATH_FEATURE_ID,
+      ),
+    ).not.toEqual([])
+  })
+
+  it('самопроверка: разрешённое значение clip-path запрещено другой функции', () => {
+    expect(
+      findForbiddenDeclarations(ALLOWED_CLIP_PATH_SELF_CHECK_STYLES, PROBE_FEATURE_ID),
+    ).not.toEqual([])
+    expect(
+      findForbiddenDeclarations(ALLOWED_CLIP_PATH_SELF_CHECK_STYLES, ALLOWED_CLIP_PATH_FEATURE_ID),
+    ).toEqual([])
   })
 })
