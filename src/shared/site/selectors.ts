@@ -75,6 +75,15 @@ export const siteSelectors = {
   reducedAnimationsBody: 'body[reduced_animations]',
 } as const
 
+/**
+ * Имена классов сайта, которые нужны как значения, а не как часть селектора: тесты
+ * имитируют ими состояния, которые на живой странице ставит клиент
+ */
+export const siteClassNames = {
+  /** Модификатор непустого поля поиска: редактор Slate не хранит значение в атрибуте */
+  chatListSearchInputValue: 'search-filter-panel-input__editor--value',
+} as const
+
 /** Имена атрибутов сайта, которые не начинаются с data- */
 export const siteAttributeNames = {
   theme: 'theme',
