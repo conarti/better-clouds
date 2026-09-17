@@ -25,6 +25,8 @@ const STUB_TIMEOUT_DELAY_MILLISECONDS = 500
 const STUB_INTERVAL_DELAY_MILLISECONDS = 250
 const TOGGLE_CYCLE_COUNT = 100
 const CHAT_LIST_ROUTE_HASH = '#/'
+/** Адрес без хэша: клиент ставит `#/` уже после запуска расширения */
+const EMPTY_ROUTE_HASH = ''
 const OTHER_ROUTE_HASH = '#/settings/main'
 const MISSING_ANCHOR_SELECTOR = '.stub-feature-anchor'
 const CLASS_SELECTOR_PREFIX_LENGTH = 1
@@ -711,6 +713,20 @@ describe('диагностика якорных селекторов', () => {
 
     await featureRuntime.start()
     vi.advanceTimersByTime(ANCHOR_DIAGNOSTICS_DELAY_MILLISECONDS)
+    vi.advanceTimersByTime(ANCHOR_DIAGNOSTICS_DELAY_MILLISECONDS)
+
+    expect(logger.warn).toHaveBeenCalledTimes(1)
+
+    featureRuntime.stop()
+  })
+
+  it('пишет предупреждение при открытии адреса без хэша', async () => {
+    renderLayoutPane()
+    window.location.hash = EMPTY_ROUTE_HASH
+    const logger = createTestLogger()
+    const featureRuntime = createDiagnosticsRuntime(logger)
+
+    await featureRuntime.start()
     vi.advanceTimersByTime(ANCHOR_DIAGNOSTICS_DELAY_MILLISECONDS)
 
     expect(logger.warn).toHaveBeenCalledTimes(1)
