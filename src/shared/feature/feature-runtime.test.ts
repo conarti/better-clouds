@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createFeatureRuntime } from './feature-runtime'
+import {
+  createFeatureRuntime,
+  type ContentScriptLifecycle,
+  type FeatureRuntime,
+} from './feature-runtime'
 import {
   createFeatureAttributeName,
   createFeatureStateAttributeName,
@@ -178,6 +182,30 @@ function createTestLogger(): Logger {
   return { warn: vi.fn(), error: vi.fn() }
 }
 
+interface TestRuntimeOptions {
+  readonly featureContents: readonly FeatureContent[]
+  readonly settingsSource: FeatureSettingsSource
+  readonly contentScriptLifecycle?: ContentScriptLifecycle
+  readonly logger?: Logger
+}
+
+/** Ядро на настоящем документе: набор метаданных всегда повторяет набор content-частей */
+function createTestRuntime({
+  featureContents,
+  settingsSource,
+  contentScriptLifecycle = new FakeContentScriptContext(),
+  logger = createTestLogger(),
+}: TestRuntimeOptions): FeatureRuntime {
+  return createFeatureRuntime({
+    featureMetas: featureContents.map((featureContent) => featureContent.meta),
+    featureContents,
+    documentRoot: document,
+    settingsSource,
+    contentScriptLifecycle,
+    logger,
+  })
+}
+
 function readFeatureAttributeNames(): string[] {
   return document.documentElement
     .getAttributeNames()
@@ -192,43 +220,39 @@ function isFeatureEnabled(featureId: string): boolean {
   return document.documentElement.hasAttribute(createFeatureAttributeName(featureId))
 }
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: [...FAKE_TIMER_METHODS] })
+  window.location.hash = ''
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  for (const attributeName of readFeatureAttributeNames()) {
+    document.documentElement.removeAttribute(attributeName)
+  }
+  for (const styleElement of document.querySelectorAll(STYLE_ELEMENT_SELECTOR)) {
+    styleElement.remove()
+  }
+  document.body.innerHTML = ''
+  window.location.hash = ''
+})
+
 describe('createFeatureRuntime', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: [...FAKE_TIMER_METHODS] })
-    window.location.hash = ''
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    for (const attributeName of readFeatureAttributeNames()) {
-      document.documentElement.removeAttribute(attributeName)
-    }
-    for (const styleElement of document.querySelectorAll(STYLE_ELEMENT_SELECTOR)) {
-      styleElement.remove()
-    }
-    document.body.innerHTML = ''
-  })
-
   it('применяет настройки при старте и держит стили выключенной функции вне каскада', async () => {
     const firstFeatureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const secondFeatureMeta = createStubFeatureMeta(SECOND_FEATURE_ID, false)
-    const featureContents: FeatureContent[] = [
-      { meta: firstFeatureMeta, styles: STUB_STYLE_TEXT },
-      { meta: secondFeatureMeta, styles: STUB_STYLE_TEXT },
-    ]
     const settings = createFakeSettingsSource(
       new Map([
         [FIRST_FEATURE_ID, true],
         [SECOND_FEATURE_ID, false],
       ]),
     )
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [firstFeatureMeta, secondFeatureMeta],
-      featureContents,
-      documentRoot: document,
+    const featureRuntime = createTestRuntime({
+      featureContents: [
+        { meta: firstFeatureMeta, styles: STUB_STYLE_TEXT },
+        { meta: secondFeatureMeta, styles: STUB_STYLE_TEXT },
+      ],
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
 
     await featureRuntime.start()
@@ -247,13 +271,9 @@ describe('createFeatureRuntime', () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID, false)
     const mount = vi.fn()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, false]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT, mount }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -278,8 +298,7 @@ describe('createFeatureRuntime', () => {
     const cleanup = vi.fn()
     let mountSignal: AbortSignal | undefined
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [
         {
           meta: featureMeta,
@@ -294,10 +313,7 @@ describe('createFeatureRuntime', () => {
           },
         },
       ],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -316,8 +332,7 @@ describe('createFeatureRuntime', () => {
     const clickListener = vi.fn()
     const fakeContentScriptContext = new FakeContentScriptContext()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, false]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [
         {
           meta: featureMeta,
@@ -330,10 +345,8 @@ describe('createFeatureRuntime', () => {
           },
         },
       ],
-      documentRoot: document,
       settingsSource: settings.source,
       contentScriptLifecycle: fakeContentScriptContext,
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -370,13 +383,10 @@ describe('createFeatureRuntime', () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const fakeContentScriptContext = new FakeContentScriptContext()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
-      documentRoot: document,
       settingsSource: settings.source,
       contentScriptLifecycle: fakeContentScriptContext,
-      logger: createTestLogger(),
     })
 
     /* Роут вне списка чатов: диагностика якорей не планируется и остаётся один таймер */
@@ -409,13 +419,9 @@ describe('createFeatureRuntime', () => {
   it('остановка снимает интервал проверки контекста', async () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
 
     window.location.hash = OTHER_ROUTE_HASH
@@ -443,12 +449,9 @@ describe('createFeatureRuntime', () => {
       return mountPromise
     })
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT, mount }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
       logger,
     })
     await featureRuntime.start()
@@ -479,13 +482,9 @@ describe('createFeatureRuntime', () => {
       }
     })
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT, mount: () => mountPromise }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -509,21 +508,18 @@ describe('createFeatureRuntime', () => {
         [SECOND_FEATURE_ID, true],
       ]),
     )
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [failingFeatureMeta, workingFeatureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [
         {
           meta: failingFeatureMeta,
           styles: STUB_STYLE_TEXT,
           mount: () => {
-            throw new Error('Монтирование не удалось')
+            throw new Error(MOUNT_FAILURE_ERROR_MESSAGE)
           },
         },
         { meta: workingFeatureMeta, styles: STUB_STYLE_TEXT },
       ],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
       logger,
     })
 
@@ -540,22 +536,19 @@ describe('createFeatureRuntime', () => {
     const failingFeatureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const workingFeatureMeta = createStubFeatureMeta(SECOND_FEATURE_ID)
     const logger = createTestLogger()
-    const mountRejection = Promise.reject(new Error('Монтирование не удалось'))
+    const mountRejection = Promise.reject(new Error(MOUNT_FAILURE_ERROR_MESSAGE))
     const settings = createFakeSettingsSource(
       new Map([
         [FIRST_FEATURE_ID, true],
         [SECOND_FEATURE_ID, true],
       ]),
     )
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [failingFeatureMeta, workingFeatureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [
         { meta: failingFeatureMeta, styles: STUB_STYLE_TEXT, mount: () => mountRejection },
         { meta: workingFeatureMeta, styles: STUB_STYLE_TEXT },
       ],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
       logger,
     })
 
@@ -577,12 +570,9 @@ describe('createFeatureRuntime', () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const logger = createTestLogger()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
       logger,
     })
 
@@ -602,13 +592,10 @@ describe('createFeatureRuntime', () => {
     const cleanup = vi.fn()
     const fakeContentScriptContext = new FakeContentScriptContext()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT, mount: () => cleanup }],
-      documentRoot: document,
       settingsSource: settings.source,
       contentScriptLifecycle: fakeContentScriptContext,
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -624,13 +611,9 @@ describe('createFeatureRuntime', () => {
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]), () => {
       throw new Error('Хранилище недоступно')
     })
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -644,13 +627,10 @@ describe('createFeatureRuntime', () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const fakeContentScriptContext = new FakeContentScriptContext()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    const featureRuntime = createFeatureRuntime({
-      featureMetas: [featureMeta],
+    const featureRuntime = createTestRuntime({
       featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
-      documentRoot: document,
       settingsSource: settings.source,
       contentScriptLifecycle: fakeContentScriptContext,
-      logger: createTestLogger(),
     })
     await featureRuntime.start()
 
@@ -663,28 +643,10 @@ describe('createFeatureRuntime', () => {
 })
 
 describe('диагностика якорных селекторов', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: [...FAKE_TIMER_METHODS] })
-    window.location.hash = ''
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    for (const attributeName of readFeatureAttributeNames()) {
-      document.documentElement.removeAttribute(attributeName)
-    }
-    for (const styleElement of document.querySelectorAll(STYLE_ELEMENT_SELECTOR)) {
-      styleElement.remove()
-    }
-    document.body.innerHTML = ''
-    window.location.hash = ''
-  })
-
   function createDiagnosticsRuntime(logger: Logger) {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
-    return createFeatureRuntime({
-      featureMetas: [featureMeta],
+    return createTestRuntime({
       featureContents: [
         {
           meta: featureMeta,
@@ -692,9 +654,7 @@ describe('диагностика якорных селекторов', () => {
           anchorSelectors: [MISSING_ANCHOR_SELECTOR],
         },
       ],
-      documentRoot: document,
       settingsSource: settings.source,
-      contentScriptLifecycle: new FakeContentScriptContext(),
       logger,
     })
   }
