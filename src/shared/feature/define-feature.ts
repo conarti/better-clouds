@@ -1,15 +1,8 @@
-import type { FeatureContent, FeatureMeta, FeatureSettingsDefinition } from './feature-types'
+import type { FeatureContent, FeatureMeta } from './feature-types'
 
 /** Метаданные функции: только данные, поэтому попап импортирует meta.ts без CSS и DOM */
 export function defineFeatureMeta<const Meta extends FeatureMeta>(featureMeta: Meta): Meta {
   return featureMeta
-}
-
-/** Схема хранения функции из необязательного settings.ts */
-export function defineFeatureSettings(
-  featureSettings: FeatureSettingsDefinition,
-): FeatureSettingsDefinition {
-  return featureSettings
 }
 
 /** Исполняемая часть функции: стили и монтирование, живёт только в content script */
