@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "better-clouds",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "include-component-in-tag": false,
+      "initial-version": "0.1.0",
+      "changelog-sections": [
+        { "type": "feat", "section": "Возможности" },
+        { "type": "fix", "section": "Исправления" },
+        { "type": "perf", "section": "Производительность" },
+        { "type": "refactor", "section": "Рефакторинг" },
+        { "type": "docs", "section": "Документация" },
+        { "type": "style", "section": "Оформление кода", "hidden": true },
+        { "type": "test", "section": "Тесты", "hidden": true },
+        { "type": "chore", "section": "Обслуживание", "hidden": true },
+        { "type": "ci", "section": "Сборка и релизы", "hidden": true }
+      ]
+    }
+  }
+}

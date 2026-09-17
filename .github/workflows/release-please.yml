@@ -1,0 +1,94 @@
+name: Релиз
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release PR и тег
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Подготовить релиз
+        id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  upload-zip:
+    name: Загрузить zip в релиз
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Установить pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Установить Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Установить зависимости
+        run: pnpm install --frozen-lockfile
+
+      - name: Определить версию Playwright
+        id: playwright-version
+        run: echo "version=$(pnpm exec playwright --version | awk '{ print $2 }')" >> "$GITHUB_OUTPUT"
+
+      - name: Кэш браузеров Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Установить Chromium для тестов
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Тесты
+        run: pnpm test
+
+      - name: Собрать zip
+        run: pnpm zip
+
+      - name: Сверить версию в zip
+        id: asset
+        env:
+          RELEASE_VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          zip_path=".output/better-clouds-${RELEASE_VERSION}-chrome.zip"
+          if [ ! -f "$zip_path" ]; then
+            echo "Архив $zip_path не собран"
+            exit 1
+          fi
+          manifest_version="$(unzip -p "$zip_path" manifest.json | jq -r .version)"
+          if [ "$manifest_version" != "$RELEASE_VERSION" ]; then
+            echo "Версия в манифесте $manifest_version не совпадает с версией релиза $RELEASE_VERSION"
+            exit 1
+          fi
+          echo "path=$zip_path" >> "$GITHUB_OUTPUT"
+
+      - name: Загрузить ассет
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+          ZIP_PATH: ${{ steps.asset.outputs.path }}
+        run: gh release upload "$TAG_NAME" "$ZIP_PATH" --clobber
