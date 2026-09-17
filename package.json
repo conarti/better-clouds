@@ -1,0 +1,51 @@
+{
+  "name": "better-clouds",
+  "description": "Неофициальное расширение для web-клиента Клаудс",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint . && node scripts/check-prose.mjs",
+    "lint:fix": "eslint . --fix && node scripts/check-prose.mjs",
+    "format": "prettier . --write --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier . --check --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "fixture:snippet": "node scripts/build-fixture-snippet.mjs",
+    "icons": "sh scripts/render-icons.sh",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@vitest/browser-playwright": "5.0.1",
+    "@vue/test-utils": "^2.5.1",
+    "@wxt-dev/module-vue": "^1.0.3",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-vue": "^10.11.0",
+    "happy-dom": "^20.14.5",
+    "playwright": "~1.63.0",
+    "postcss": "^8.5.28",
+    "prettier": "^3.9.7",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vite": "^8.3.0",
+    "vitest": "5.0.1",
+    "vue-tsc": "^3.3.11",
+    "wxt": "^0.21.4"
+  }
+}

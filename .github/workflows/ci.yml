@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Проверки
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v7
+
+      - name: Установить pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Установить Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Установить зависимости
+        run: pnpm install --frozen-lockfile
+
+      - name: Определить версию Playwright
+        id: playwright-version
+        run: echo "version=$(pnpm exec playwright --version | awk '{ print $2 }')" >> "$GITHUB_OUTPUT"
+
+      - name: Кэш браузеров Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Установить Chromium для тестов
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Линтер и проверка текстов
+        run: pnpm lint
+
+      - name: Проверить заголовок PR
+        if: github.event_name == 'pull_request'
+        env:
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PULL_REQUEST_TITLE" | node scripts/check-prose.mjs --stdin
+
+      - name: Проверить форматирование
+        run: pnpm format:check
+
+      - name: Проверить типы
+        run: pnpm type-check
+
+      - name: Тесты
+        run: pnpm test
+
+      - name: Сборка
+        run: pnpm build
+
+      - name: Проверить workflow
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color

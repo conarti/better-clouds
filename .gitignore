@@ -1,0 +1,9 @@
+node_modules/
+.output/
+.wxt/
+coverage/
+.env*
+*.zip
+.DS_Store
+web-ext.config.ts
+**/__screenshots__/
