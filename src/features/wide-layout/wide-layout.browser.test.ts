@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { css } from '@/shared/feature/css'
 import { siteSelectors } from '@/shared/site/selectors'
-import { mountFeatureFixture, type MountedFeatureFixture } from '@@/tests/helpers/feature-dom'
+import {
+  findRequiredElement,
+  mountFeatureFixture,
+  type MountedFeatureFixture,
+} from '@@/tests/helpers/feature-dom'
 import { loadFixture } from '@@/tests/helpers/load-fixture'
 import featureMeta from './meta'
 import { featureStyles } from './styles'
@@ -52,15 +56,11 @@ describe('wide-layout', () => {
   let fixture: MountedFeatureFixture
 
   function readLayoutPaneStyle(): CSSStyleDeclaration {
-    const layoutPaneElement = fixture.container.querySelector(siteSelectors.layoutPane)
-    expect(layoutPaneElement).not.toBeNull()
-    return getComputedStyle(layoutPaneElement as Element)
+    return getComputedStyle(findRequiredElement(fixture.container, siteSelectors.layoutPane))
   }
 
   function readLeftPaneStyle(): CSSStyleDeclaration {
-    const leftPaneElement = fixture.container.querySelector(siteSelectors.layoutPaneLeft)
-    expect(leftPaneElement).not.toBeNull()
-    return getComputedStyle(leftPaneElement as Element)
+    return getComputedStyle(findRequiredElement(fixture.container, siteSelectors.layoutPaneLeft))
   }
 
   beforeEach(() => {
@@ -87,8 +87,10 @@ describe('wide-layout', () => {
   })
 
   it('растягивает центральную колонку на всю ширину корня приложения', () => {
-    const layoutPaneElement = fixture.container.querySelector(siteSelectors.layoutPane)
-    const layoutPaneRect = (layoutPaneElement as Element).getBoundingClientRect()
+    const layoutPaneRect = findRequiredElement(
+      fixture.container,
+      siteSelectors.layoutPane,
+    ).getBoundingClientRect()
     const containerRect = fixture.container.getBoundingClientRect()
     expect(Math.abs(layoutPaneRect.width - containerRect.width)).toBeLessThanOrEqual(
       MAXIMUM_WIDTH_DIFFERENCE_PIXELS,

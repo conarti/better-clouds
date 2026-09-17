@@ -3,6 +3,7 @@ import { css } from '@/shared/feature/css'
 import { siteAttributeNames, siteSelectors } from '@/shared/site/selectors'
 import {
   collectStyleRules,
+  findRequiredElement,
   mountFeatureFixture,
   type MountedFeatureFixture,
 } from '@@/tests/helpers/feature-dom'
@@ -30,6 +31,7 @@ const DISABLED_TRANSITION_DURATION = '0s'
 const REDUCED_ANIMATIONS_ATTRIBUTE_VALUE = 'true'
 const REDUCED_MOTION_MEDIA_CONDITION = 'prefers-reduced-motion'
 const DISABLED_DURATION_DECLARATION_COUNT = 2
+const FIRST_RULE_INDEX = 0
 const DISABLED_DURATION_VALUE = '0ms'
 const KEYBOARD_NAVIGATION_ATTRIBUTE_VALUE = ''
 const ANY_ELEMENT_SELECTOR = '*'
@@ -93,9 +95,7 @@ describe('autohide-toolbar', () => {
   }
 
   function findToolbarElement(): Element {
-    const toolbarElement = fixture.container.querySelector(siteSelectors.toolbar)
-    expect(toolbarElement).not.toBeNull()
-    return toolbarElement as Element
+    return findRequiredElement(fixture.container, siteSelectors.toolbar)
   }
 
   function readToolbarStyle(): CSSStyleDeclaration {
@@ -119,8 +119,9 @@ describe('autohide-toolbar', () => {
     expect(toolbarStyle.marginRight).toBe(`-${hiddenOffsetPixels}px`)
 
     const toolbarRect = findToolbarElement().getBoundingClientRect()
-    const layoutPaneRect = (
-      fixture.container.querySelector(siteSelectors.layoutPane) as Element
+    const layoutPaneRect = findRequiredElement(
+      fixture.container,
+      siteSelectors.layoutPane,
     ).getBoundingClientRect()
     expect(
       Math.abs(toolbarRect.right - layoutPaneRect.left - EDGE_STRIP_WIDTH_PIXELS),
@@ -204,17 +205,15 @@ describe('autohide-toolbar', () => {
     const styleSheet = fixture.featureStyleElement.sheet
     expect(styleSheet).not.toBeNull()
 
-    const reducedMotionRules = [...Array((styleSheet as CSSStyleSheet).cssRules.length).keys()]
-      .map((ruleIndex) => (styleSheet as CSSStyleSheet).cssRules.item(ruleIndex))
-      .filter(
-        (cssRule): cssRule is CSSMediaRule =>
-          cssRule instanceof CSSMediaRule &&
-          cssRule.conditionText.includes(REDUCED_MOTION_MEDIA_CONDITION),
-      )
+    const reducedMotionRules = [...(styleSheet as CSSStyleSheet).cssRules].filter(
+      (cssRule): cssRule is CSSMediaRule =>
+        cssRule instanceof CSSMediaRule &&
+        cssRule.conditionText.includes(REDUCED_MOTION_MEDIA_CONDITION),
+    )
     expect(reducedMotionRules).toHaveLength(1)
 
     const [reducedMotionRule] = reducedMotionRules
-    const nestedRule = (reducedMotionRule as CSSMediaRule).cssRules.item(0)
+    const nestedRule = (reducedMotionRule as CSSMediaRule).cssRules.item(FIRST_RULE_INDEX)
     expect(nestedRule).toBeInstanceOf(CSSStyleRule)
 
     const { style } = nestedRule as CSSStyleRule

@@ -52,7 +52,7 @@ export function mountFeatureFixture({
 }: MountFeatureFixtureOptions): MountedFeatureFixture {
   const containerElement = createContainerElement()
   const fixtureHostElement = wrapInLayoutPane ? createLayoutPaneElement() : containerElement
-  if (fixtureHostElement !== containerElement) {
+  if (wrapInLayoutPane) {
     containerElement.append(fixtureHostElement)
   }
   fixtureHostElement.innerHTML = fixtureHtmlList.join('')
@@ -95,6 +95,15 @@ export function mountFeatureFixture({
   setEnabled(true)
 
   return { container: containerElement, featureStyleElement, setEnabled, addStyles, unmount }
+}
+
+/** Элемент фрагмента, без которого проба бессмысленна: отсутствие видно сразу по сообщению */
+export function findRequiredElement(root: ParentNode, selector: string): Element {
+  const element = root.querySelector(selector)
+  if (element === null) {
+    throw new Error(`Элемент ${selector} не найден`)
+  }
+  return element
 }
 
 /** Все правила таблицы стилей, включая вложенные в @media, в порядке объявления */

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { siteClassNames, siteSelectors } from '@/shared/site/selectors'
-import { mountFeatureFixture, type MountedFeatureFixture } from '@@/tests/helpers/feature-dom'
+import {
+  findRequiredElement,
+  mountFeatureFixture,
+  type MountedFeatureFixture,
+} from '@@/tests/helpers/feature-dom'
 import { loadFixture } from '@@/tests/helpers/load-fixture'
 import featureMeta from './meta'
 import { featureStyles } from './styles'
@@ -82,14 +86,16 @@ describe('hide-catalog-bots', () => {
 
   it('возвращает записи, как только в поле поиска появляется значение', () => {
     mountChatList(ALL_CHATS_FIXTURE_FILE_NAME)
-    const searchInputElement = fixture.container.querySelector(siteSelectors.chatListSearchInput)
-    expect(searchInputElement).not.toBeNull()
+    const searchInputElement = findRequiredElement(
+      fixture.container,
+      siteSelectors.chatListSearchInput,
+    )
     const catalogWrappers = findElements(catalogWrapperSelector)
     expect(countHidden(catalogWrappers)).toBe(catalogWrappers.length)
 
-    ;(searchInputElement as Element).classList.add(siteClassNames.chatListSearchInputValue)
+    searchInputElement.classList.add(siteClassNames.chatListSearchInputValue)
     expect(countHidden(catalogWrappers)).toBe(0)
-    ;(searchInputElement as Element).classList.remove(siteClassNames.chatListSearchInputValue)
+    searchInputElement.classList.remove(siteClassNames.chatListSearchInputValue)
     expect(countHidden(catalogWrappers)).toBe(catalogWrappers.length)
   })
 
@@ -103,11 +109,9 @@ describe('hide-catalog-bots', () => {
 
   it('скрывает каталожную запись, добавленную догрузкой списка', () => {
     mountChatList(ALL_CHATS_FIXTURE_FILE_NAME)
-    const [catalogWrapper] = findElements(catalogWrapperSelector)
-    expect(catalogWrapper).toBeDefined()
-    const chatListElement = fixture.container.querySelector(siteSelectors.chatList)
-    const appendedWrapper = (catalogWrapper as Element).cloneNode(true) as Element
-    ;(chatListElement as Element).append(appendedWrapper)
+    const catalogWrapper = findRequiredElement(fixture.container, catalogWrapperSelector)
+    const appendedWrapper = catalogWrapper.cloneNode(true) as Element
+    findRequiredElement(fixture.container, siteSelectors.chatList).append(appendedWrapper)
     expect(getComputedStyle(appendedWrapper).display).toBe(HIDDEN_DISPLAY_VALUE)
   })
 })

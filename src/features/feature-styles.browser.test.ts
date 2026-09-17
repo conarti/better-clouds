@@ -110,7 +110,8 @@ function findForbiddenDeclarations(cssText: string, featureId: string): string[]
   return forbiddenDeclarations
 }
 
-function findUnscopedSelectors(cssText: string, featureScope: string): string[] {
+/** Правила в том виде, в каком их принял Chromium: отброшенные правила сюда не попадают */
+function collectBrowserRules(cssText: string): CSSStyleRule[] {
   const fixture = mountFeatureFixture({
     featureId: PROBE_FEATURE_ID,
     featureStyles: cssText,
@@ -118,24 +119,15 @@ function findUnscopedSelectors(cssText: string, featureScope: string): string[] 
   })
   try {
     return collectStyleRules(fixture.featureStyleElement)
-      .flatMap((styleRule) => splitTopLevelSelectorList(styleRule.selectorText))
-      .filter((selector) => !selector.startsWith(featureScope))
   } finally {
     fixture.unmount()
   }
 }
 
-function countBrowserRules(cssText: string): number {
-  const fixture = mountFeatureFixture({
-    featureId: PROBE_FEATURE_ID,
-    featureStyles: cssText,
-    fixtureHtmlList: EMPTY_FIXTURE_HTML_LIST,
-  })
-  try {
-    return collectStyleRules(fixture.featureStyleElement).length
-  } finally {
-    fixture.unmount()
-  }
+function findUnscopedSelectors(cssText: string, featureScope: string): string[] {
+  return collectBrowserRules(cssText)
+    .flatMap((styleRule) => splitTopLevelSelectorList(styleRule.selectorText))
+    .filter((selector) => !selector.startsWith(featureScope))
 }
 
 describe('стили функций', () => {
@@ -150,7 +142,7 @@ describe('стили функций', () => {
     it('Chromium принимает все правила', () => {
       const sourceRuleCount = countSourceRules(featureStyles)
       expect(sourceRuleCount).toBeGreaterThan(0)
-      expect(countBrowserRules(featureStyles)).toBe(sourceRuleCount)
+      expect(collectBrowserRules(featureStyles)).toHaveLength(sourceRuleCount)
     })
 
     it('каждое правило ограничено областью функции', () => {
@@ -170,7 +162,7 @@ describe('стили функций', () => {
 
   it('самопроверка: Chromium выбрасывает правило с вложенным :has()', () => {
     expect(countSourceRules(NESTED_HAS_SELF_CHECK_STYLES)).toBe(1)
-    expect(countBrowserRules(NESTED_HAS_SELF_CHECK_STYLES)).toBe(0)
+    expect(collectBrowserRules(NESTED_HAS_SELF_CHECK_STYLES)).toEqual([])
     expect(findNestedHasSelector(NESTED_HAS_SELF_CHECK_STYLES)).not.toEqual([])
   })
 
