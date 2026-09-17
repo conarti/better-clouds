@@ -7,7 +7,8 @@ import { parse as parseSingleFileComponent } from 'vue/compiler-sfc'
 /**
  * Проверяет тексты для людей (README, документы, тексты UI, заголовки коммитов и PR)
  * на длинное и среднее тире и двойной дефис. Код, блоки кода и стили не проверяются.
- * Без аргументов проверяет файлы репозитория, с флагом --stdin построчно стандартный ввод.
+ * Без аргументов проверяет файлы репозитория, с флагом --stdin построчно стандартный ввод,
+ * с путями файлов только их: по расширению выбирается разбор Markdown, TypeScript или .vue.
  */
 
 const PROJECT_ROOT_PATH = path.resolve(import.meta.dirname, '..')
@@ -22,9 +23,16 @@ const FORBIDDEN_SEQUENCES = [
 ]
 
 const MARKDOWN_FILE_PATTERNS = ['README.md', 'tests/fixtures/README.md', 'docs/**/*.md']
-const FEATURE_META_FILE_PATTERN = 'src/features/*/meta.ts'
+/** Тексты для людей в TypeScript: названия и описания функций плюс имя и описание расширения */
+const TYPESCRIPT_FILE_PATTERNS = ['src/features/*/meta.ts', 'wxt.config.ts']
 const VUE_FILE_PATTERN = 'src/**/*.vue'
 const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.output', '.wxt'])
+
+const MARKDOWN_FILE_EXTENSION = '.md'
+const TYPESCRIPT_FILE_EXTENSION = '.ts'
+const VUE_FILE_EXTENSION = '.vue'
+const FLAG_PREFIX = '--'
+const FIRST_LINE_NUMBER = 1
 
 const CHECKED_VUE_ATTRIBUTE_NAMES = new Set(['title', 'aria-label', 'placeholder'])
 const VUE_ELEMENT_NODE_TYPE = 1
@@ -60,6 +68,15 @@ function findViolationsInText(text, sourceName, lineNumber) {
 }
 
 /**
+ * Читает файл: путь относительно корня проекта или абсолютный
+ * @param {string} filePath путь файла
+ * @returns {string} содержимое
+ */
+function readProjectFile(filePath) {
+  return fs.readFileSync(path.resolve(PROJECT_ROOT_PATH, filePath), UTF8_ENCODING)
+}
+
+/**
  * Находит файлы по glob-шаблонам относительно корня проекта
  * @param {string[]} patterns glob-шаблоны
  * @returns {string[]} относительные пути
@@ -79,7 +96,7 @@ function findProjectFiles(patterns) {
  * @returns {ProseViolation[]}
  */
 function checkMarkdownFile(relativeFilePath) {
-  const fileContent = fs.readFileSync(path.join(PROJECT_ROOT_PATH, relativeFilePath), UTF8_ENCODING)
+  const fileContent = readProjectFile(relativeFilePath)
   const violations = []
   let isInsideCodeFence = false
 
@@ -106,18 +123,14 @@ function checkMarkdownFile(relativeFilePath) {
 }
 
 /**
- * Проверяет строковые литералы и тексты шаблонных строк в meta.ts функции
- * @param {string} relativeFilePath путь файла
+ * Проверяет строковые литералы и тексты шаблонных строк в коде на TypeScript
+ * @param {string} sourceText исходный текст
+ * @param {string} sourceName имя источника для отчёта
+ * @param {number} lineOffset сдвиг строк, если код это фрагмент файла
  * @returns {ProseViolation[]}
  */
-function checkFeatureMetaFile(relativeFilePath) {
-  const fileContent = fs.readFileSync(path.join(PROJECT_ROOT_PATH, relativeFilePath), UTF8_ENCODING)
-  const sourceFile = ts.createSourceFile(
-    relativeFilePath,
-    fileContent,
-    ts.ScriptTarget.Latest,
-    true,
-  )
+function checkTypeScriptSource(sourceText, sourceName, lineOffset = 0) {
+  const sourceFile = ts.createSourceFile(sourceName, sourceText, ts.ScriptTarget.Latest, true)
   const violations = []
 
   /** @param {ts.Node} node */
@@ -130,7 +143,9 @@ function checkFeatureMetaFile(relativeFilePath) {
       ts.isTemplateTail(node)
     ) {
       const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-      violations.push(...findViolationsInText(node.text, relativeFilePath, line + 1))
+      violations.push(
+        ...findViolationsInText(node.text, sourceName, line + FIRST_LINE_NUMBER + lineOffset),
+      )
     }
     ts.forEachChild(node, visitNode)
   }
@@ -140,14 +155,24 @@ function checkFeatureMetaFile(relativeFilePath) {
 }
 
 /**
- * Проверяет текстовые узлы и статические title, aria-label, placeholder в шаблоне .vue
- * Для текста берётся исходный фрагмент: компилятор схлопывает пробелы и переносы в content,
- * из-за чего номер строки в отчёте был бы неточным.
+ * Проверяет строковые литералы файла на TypeScript
+ * @param {string} relativeFilePath путь файла
+ * @returns {ProseViolation[]}
+ */
+function checkTypeScriptFile(relativeFilePath) {
+  return checkTypeScriptSource(readProjectFile(relativeFilePath), relativeFilePath)
+}
+
+/**
+ * Проверяет шаблон и код компонента .vue: текстовые узлы, статические title, aria-label и
+ * placeholder в шаблоне плюс строковые литералы блоков script, где живут тексты интерфейса.
+ * Для текста шаблона берётся исходный фрагмент: компилятор схлопывает пробелы и переносы
+ * в content, из-за чего номер строки в отчёте был бы неточным.
  * @param {string} relativeFilePath путь файла
  * @returns {ProseViolation[]}
  */
 function checkVueFile(relativeFilePath) {
-  const fileContent = fs.readFileSync(path.join(PROJECT_ROOT_PATH, relativeFilePath), UTF8_ENCODING)
+  const fileContent = readProjectFile(relativeFilePath)
   const { descriptor } = parseSingleFileComponent(fileContent, { filename: relativeFilePath })
   const violations = []
 
@@ -186,6 +211,17 @@ function checkVueFile(relativeFilePath) {
   if (descriptor.template?.ast) {
     visitTemplateNode(descriptor.template.ast)
   }
+  for (const scriptBlock of [descriptor.script, descriptor.scriptSetup]) {
+    if (scriptBlock) {
+      violations.push(
+        ...checkTypeScriptSource(
+          scriptBlock.content,
+          relativeFilePath,
+          scriptBlock.loc.start.line - FIRST_LINE_NUMBER,
+        ),
+      )
+    }
+  }
   return violations
 }
 
@@ -193,9 +229,28 @@ function checkVueFile(relativeFilePath) {
 function checkProjectFiles() {
   return [
     ...findProjectFiles(MARKDOWN_FILE_PATTERNS).flatMap(checkMarkdownFile),
-    ...findProjectFiles([FEATURE_META_FILE_PATTERN]).flatMap(checkFeatureMetaFile),
+    ...findProjectFiles(TYPESCRIPT_FILE_PATTERNS).flatMap(checkTypeScriptFile),
     ...findProjectFiles([VUE_FILE_PATTERN]).flatMap(checkVueFile),
   ]
+}
+
+/**
+ * Проверяет один файл, выбирая разбор по расширению
+ * @param {string} filePath путь файла
+ * @returns {ProseViolation[]}
+ */
+function checkFile(filePath) {
+  const fileExtension = path.extname(filePath)
+  if (fileExtension === MARKDOWN_FILE_EXTENSION) {
+    return checkMarkdownFile(filePath)
+  }
+  if (fileExtension === VUE_FILE_EXTENSION) {
+    return checkVueFile(filePath)
+  }
+  if (fileExtension === TYPESCRIPT_FILE_EXTENSION) {
+    return checkTypeScriptFile(filePath)
+  }
+  throw new Error(`Неизвестное расширение файла ${filePath}`)
 }
 
 /** @returns {ProseViolation[]} */
@@ -206,7 +261,22 @@ function checkStandardInput() {
     .flatMap((line, lineIndex) => findViolationsInText(line, STDIN_SOURCE_NAME, lineIndex + 1))
 }
 
-const violations = process.argv.includes(STDIN_FLAG) ? checkStandardInput() : checkProjectFiles()
+const filePathArguments = process.argv
+  .slice(2)
+  .filter((argument) => !argument.startsWith(FLAG_PREFIX))
+
+/** @returns {ProseViolation[]} */
+function run() {
+  if (process.argv.includes(STDIN_FLAG)) {
+    return checkStandardInput()
+  }
+  if (filePathArguments.length > 0) {
+    return filePathArguments.flatMap(checkFile)
+  }
+  return checkProjectFiles()
+}
+
+const violations = run()
 
 for (const { sourceName, lineNumber, description } of violations) {
   console.error(`${sourceName}:${lineNumber} ${description}`)
