@@ -29,6 +29,11 @@ const OTHER_ROUTE_HASH = '#/settings/main'
 const MISSING_ANCHOR_SELECTOR = '.stub-feature-anchor'
 const CLASS_SELECTOR_PREFIX_LENGTH = 1
 const STUB_STYLE_TEXT = 'html[data-stub] { color: red; }'
+const NO_ACTIVE_TIMER_COUNT = 0
+const CONTEXT_CHECK_TIMER_COUNT = 1
+const CONTEXT_SUBSCRIPTION_COUNT = 1
+const NO_ACTIVE_SUBSCRIPTION_COUNT = 0
+const CONTEXT_CHECK_TICK_COUNT = 3
 const MOUNT_CALL_COUNT_AFTER_TOGGLE = 2
 const MOUNT_FAILURE_ERROR_MESSAGE = 'Монтирование не удалось'
 
@@ -66,6 +71,11 @@ class FakeContentScriptContext {
 
   private readonly abortController = new AbortController()
   private readonly invalidationCallbacks = new Set<() => void>()
+
+  /** Активные подписки: по ним видно, что остановка сняла за собой, а не только добавила */
+  get activeInvalidationSubscriptionCount(): number {
+    return this.invalidationCallbacks.size
+  }
 
   onInvalidated(callback: () => void): () => void {
     this.directInvalidationSubscriptionCount += 1
@@ -346,7 +356,7 @@ describe('createFeatureRuntime', () => {
     expect(fakeContentScriptContext.invalidationSubscriptionCount).toBe(
       invalidationSubscriptionCountBeforeCycles,
     )
-    expect(fakeContentScriptContext.setIntervalCallCount).toBe(1)
+    expect(fakeContentScriptContext.setIntervalCallCount).toBe(0)
     expect(fakeContentScriptContext.setTimeoutCallCount).toBe(0)
     expect(fakeContentScriptContext.requestAnimationFrameCallCount).toBe(0)
     expect(fakeContentScriptContext.addEventListenerCallCount).toBe(0)
@@ -354,7 +364,7 @@ describe('createFeatureRuntime', () => {
     featureRuntime.stop()
   })
 
-  it('повторный запуск не добавляет вторую подписку на инвалидацию и второй интервал', async () => {
+  it('остановка снимает подписку на инвалидацию и таймеры, повторный запуск их не копит', async () => {
     const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
     const fakeContentScriptContext = new FakeContentScriptContext()
     const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
@@ -367,15 +377,55 @@ describe('createFeatureRuntime', () => {
       logger: createTestLogger(),
     })
 
+    /* Роут вне списка чатов: диагностика якорей не планируется и остаётся один таймер */
+    window.location.hash = OTHER_ROUTE_HASH
+
     await featureRuntime.start()
+    expect(vi.getTimerCount()).toBe(CONTEXT_CHECK_TIMER_COUNT)
+    expect(fakeContentScriptContext.activeInvalidationSubscriptionCount).toBe(
+      CONTEXT_SUBSCRIPTION_COUNT,
+    )
+
     featureRuntime.stop()
+
+    expect(vi.getTimerCount()).toBe(NO_ACTIVE_TIMER_COUNT)
+    expect(fakeContentScriptContext.activeInvalidationSubscriptionCount).toBe(
+      NO_ACTIVE_SUBSCRIPTION_COUNT,
+    )
+
     await featureRuntime.start()
 
-    expect(fakeContentScriptContext.directInvalidationSubscriptionCount).toBe(1)
-    expect(fakeContentScriptContext.setIntervalCallCount).toBe(1)
+    expect(vi.getTimerCount()).toBe(CONTEXT_CHECK_TIMER_COUNT)
+    expect(fakeContentScriptContext.activeInvalidationSubscriptionCount).toBe(
+      CONTEXT_SUBSCRIPTION_COUNT,
+    )
     expect(document.querySelectorAll(STYLE_ELEMENT_SELECTOR)).toHaveLength(1)
 
     featureRuntime.stop()
+  })
+
+  it('остановка снимает интервал проверки контекста', async () => {
+    const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
+    const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
+    const featureRuntime = createFeatureRuntime({
+      featureMetas: [featureMeta],
+      featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT }],
+      documentRoot: document,
+      settingsSource: settings.source,
+      contentScriptLifecycle: new FakeContentScriptContext(),
+      logger: createTestLogger(),
+    })
+
+    window.location.hash = OTHER_ROUTE_HASH
+
+    await featureRuntime.start()
+    expect(vi.getTimerCount()).toBe(CONTEXT_CHECK_TIMER_COUNT)
+
+    featureRuntime.stop()
+
+    expect(vi.getTimerCount()).toBe(NO_ACTIVE_TIMER_COUNT)
+    vi.advanceTimersByTime(CONTEXT_VALIDITY_CHECK_INTERVAL_MILLISECONDS * CONTEXT_CHECK_TICK_COUNT)
+    expect(vi.getTimerCount()).toBe(NO_ACTIVE_TIMER_COUNT)
   })
 
   it('отклонённое монтирование не выключает новое включение той же функции', async () => {

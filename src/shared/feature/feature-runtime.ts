@@ -38,14 +38,11 @@ const MISSING_ANCHOR_SELECTORS_MESSAGE =
   'Якорные селекторы не найдены, разметка сайта могла измениться'
 
 /**
- * Часть ContentScriptContext, которой пользуется runtime. Хелперы addEventListener, setTimeout
- * и requestAnimationFrame сюда не входят: они перетирают переданный сигнал и на каждый вызов
- * добавляют подписку на инвалидацию, поэтому ресурсам функций не подходят.
+ * Часть ContentScriptContext, которой пользуется runtime. Хелперы таймеров, кадров и событий
+ * сюда не входят: они перетирают переданный сигнал и на каждый вызов добавляют подписку на
+ * инвалидацию, которую нельзя снять, поэтому ресурсы runtime и функций живут в своих областях.
  */
-export type ContentScriptLifecycle = Pick<
-  ContentScriptContext,
-  'isValid' | 'onInvalidated' | 'setInterval'
->
+export type ContentScriptLifecycle = Pick<ContentScriptContext, 'isValid' | 'onInvalidated'>
 
 export interface FeatureRuntimeOptions {
   readonly featureMetas: readonly FeatureMeta[]
@@ -84,6 +81,7 @@ export function createFeatureRuntime({
   const unwatchCallbacks: Array<() => void> = []
 
   let runtimeScope: LifecycleScope | null = null
+  let removeInvalidationListener: (() => void) | undefined
   let isRunning = false
   let isContextSubscribed = false
   let hasWarnedAboutForeignStyles = false
@@ -299,16 +297,27 @@ export function createFeatureRuntime({
     }
   }
 
-  function subscribeToContentScriptContext(): void {
+  /**
+   * Подписка и проверка живут в области запуска: интервал снимается вместе с ней, а слушатель
+   * инвалидации снимается своим отписчиком, поэтому после stop() ничего не тикает и повторный
+   * запуск не копит подписки.
+   */
+  function subscribeToContentScriptContext(scope: LifecycleScope): void {
     if (isContextSubscribed) {
       return
     }
     isContextSubscribed = true
-    contentScriptLifecycle.onInvalidated(stop)
-    contentScriptLifecycle.setInterval(
-      checkContextValidity,
-      CONTEXT_VALIDITY_CHECK_INTERVAL_MILLISECONDS,
-    )
+    removeInvalidationListener = contentScriptLifecycle.onInvalidated(stop)
+    scope.lifecycle.setInterval(checkContextValidity, CONTEXT_VALIDITY_CHECK_INTERVAL_MILLISECONDS)
+  }
+
+  function unsubscribeFromContentScriptContext(): void {
+    if (!isContextSubscribed) {
+      return
+    }
+    isContextSubscribed = false
+    removeInvalidationListener?.()
+    removeInvalidationListener = undefined
   }
 
   async function start(): Promise<void> {
@@ -316,10 +325,10 @@ export function createFeatureRuntime({
       return
     }
     isRunning = true
-    subscribeToContentScriptContext()
 
     const scope = createLifecycleScope()
     runtimeScope = scope
+    subscribeToContentScriptContext(scope)
     warnAboutForeignStyles()
     createFeatureStyleElements()
     scope.lifecycle.addEventListener(
@@ -356,6 +365,7 @@ export function createFeatureRuntime({
       return
     }
     isRunning = false
+    unsubscribeFromContentScriptContext()
 
     for (const unwatch of unwatchCallbacks) {
       try {
