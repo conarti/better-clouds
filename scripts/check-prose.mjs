@@ -52,8 +52,8 @@ const MARKDOWN_THEMATIC_BREAK_PATTERN = /^\s*([-*_])(\s*\1){2,}\s*$/
 
 /**
  * Находит запрещённые последовательности в тексте, который может занимать несколько строк
- * @param {string} text проверяемый текст
- * @param {string} sourceName имя источника для отчёта
+ * @param {string} text
+ * @param {string} sourceName
  * @param {number} lineNumber номер первой строки текста в источнике
  * @returns {ProseViolation[]}
  */
@@ -69,8 +69,8 @@ function findViolationsInText(text, sourceName, lineNumber) {
 
 /**
  * Читает файл: путь относительно корня проекта или абсолютный
- * @param {string} filePath путь файла
- * @returns {string} содержимое
+ * @param {string} filePath
+ * @returns {string}
  */
 function readProjectFile(filePath) {
   return fs.readFileSync(path.resolve(PROJECT_ROOT_PATH, filePath), UTF8_ENCODING)
@@ -78,8 +78,8 @@ function readProjectFile(filePath) {
 
 /**
  * Находит файлы по glob-шаблонам относительно корня проекта
- * @param {string[]} patterns glob-шаблоны
- * @returns {string[]} относительные пути
+ * @param {string[]} patterns
+ * @returns {string[]} пути относительно корня
  */
 function findProjectFiles(patterns) {
   return fs
@@ -92,7 +92,7 @@ function findProjectFiles(patterns) {
 
 /**
  * Проверяет Markdown вне блоков кода, inline-кода, адресов ссылок и служебной разметки таблиц
- * @param {string} relativeFilePath путь файла
+ * @param {string} relativeFilePath
  * @returns {ProseViolation[]}
  */
 function checkMarkdownFile(relativeFilePath) {
@@ -116,7 +116,9 @@ function checkMarkdownFile(relativeFilePath) {
       .replace(MARKDOWN_INLINE_CODE_PATTERN, '')
       .replace(MARKDOWN_LINK_DESTINATION_PATTERN, ']')
       .replace(MARKDOWN_HTML_COMMENT_MARKER_PATTERN, '')
-    violations.push(...findViolationsInText(proseText, relativeFilePath, lineIndex + 1))
+    violations.push(
+      ...findViolationsInText(proseText, relativeFilePath, lineIndex + FIRST_LINE_NUMBER),
+    )
   })
 
   return violations
@@ -124,8 +126,8 @@ function checkMarkdownFile(relativeFilePath) {
 
 /**
  * Проверяет строковые литералы и тексты шаблонных строк в коде на TypeScript
- * @param {string} sourceText исходный текст
- * @param {string} sourceName имя источника для отчёта
+ * @param {string} sourceText
+ * @param {string} sourceName
  * @param {number} lineOffset сдвиг строк, если код это фрагмент файла
  * @returns {ProseViolation[]}
  */
@@ -156,7 +158,7 @@ function checkTypeScriptSource(sourceText, sourceName, lineOffset = 0) {
 
 /**
  * Проверяет строковые литералы файла на TypeScript
- * @param {string} relativeFilePath путь файла
+ * @param {string} relativeFilePath
  * @returns {ProseViolation[]}
  */
 function checkTypeScriptFile(relativeFilePath) {
@@ -168,7 +170,7 @@ function checkTypeScriptFile(relativeFilePath) {
  * placeholder в шаблоне плюс строковые литералы блоков script, где живут тексты интерфейса.
  * Для текста шаблона берётся исходный фрагмент: компилятор схлопывает пробелы и переносы
  * в content, из-за чего номер строки в отчёте был бы неточным.
- * @param {string} relativeFilePath путь файла
+ * @param {string} relativeFilePath
  * @returns {ProseViolation[]}
  */
 function checkVueFile(relativeFilePath) {
@@ -236,7 +238,7 @@ function checkProjectFiles() {
 
 /**
  * Проверяет один файл, выбирая разбор по расширению
- * @param {string} filePath путь файла
+ * @param {string} filePath
  * @returns {ProseViolation[]}
  */
 function checkFile(filePath) {
@@ -258,7 +260,9 @@ function checkStandardInput() {
   const standardInputContent = fs.readFileSync(process.stdin.fd, UTF8_ENCODING)
   return standardInputContent
     .split('\n')
-    .flatMap((line, lineIndex) => findViolationsInText(line, STDIN_SOURCE_NAME, lineIndex + 1))
+    .flatMap((line, lineIndex) =>
+      findViolationsInText(line, STDIN_SOURCE_NAME, lineIndex + FIRST_LINE_NUMBER),
+    )
 }
 
 const filePathArguments = process.argv

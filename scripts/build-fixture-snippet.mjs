@@ -73,8 +73,8 @@ const REGULAR_ENTRY_KIND = 'regular'
 
 /**
  * Проверяет значение по списку строковых шаблонов
- * @param {string} value проверяемое значение
- * @param {string[]} patterns шаблоны
+ * @param {string} value
+ * @param {string[]} patterns
  * @returns {boolean}
  */
 function matchesAnyFixturePattern(value, patterns) {
@@ -83,7 +83,7 @@ function matchesAnyFixturePattern(value, patterns) {
 
 /**
  * Убирает символы нулевой ширины и внешние пробелы
- * @param {string} text исходный текст
+ * @param {string} text
  * @returns {string}
  */
 function normalizeFixtureText(text) {
@@ -92,8 +92,8 @@ function normalizeFixtureText(text) {
 
 /**
  * Текст разрешён, если он есть в белом списке UI-строк или уже похож на заменитель
- * @param {string} text проверяемый текст
- * @param {{ allowedTexts: string[], placeholderPatterns: string[] }} privacyRules правила
+ * @param {string} text
+ * @param {{ allowedTexts: string[], placeholderPatterns: string[] }} privacyRules
  * @returns {boolean}
  */
 function isAllowedFixtureText(text, privacyRules) {
@@ -105,8 +105,8 @@ function isAllowedFixtureText(text, privacyRules) {
 
 /**
  * Имя атрибута структурное, если оно есть в белом списке или подходит под шаблон с `*`
- * @param {string} attributeName имя атрибута
- * @param {{ structuralAttributeNames: string[] }} privacyRules правила
+ * @param {string} attributeName
+ * @param {{ structuralAttributeNames: string[] }} privacyRules
  * @returns {boolean}
  */
 function isStructuralFixtureAttributeName(attributeName, privacyRules) {
@@ -119,31 +119,28 @@ function isStructuralFixtureAttributeName(attributeName, privacyRules) {
 
 /**
  * Подбирает заменитель для текстового узла по ближайшему известному предку
- * @param {Text} textNode текстовый узел
+ * @param {Text} textNode
  * @param {Record<string, number>} counters счётчики заменителей
  * @returns {string}
  */
 function createFixturePlaceholderText(textNode, counters) {
-  const parentElement = textNode.parentElement
-  const placeholderRule = parentElement
-    ? PLACEHOLDER_RULES.find((rule) => parentElement.closest(rule.ancestorSelector))
-    : undefined
-  if (placeholderRule && placeholderRule.fixedText) {
+  const { parentElement } = textNode
+  const placeholderRule = PLACEHOLDER_RULES.find((rule) =>
+    parentElement?.closest(rule.ancestorSelector),
+  )
+  if (placeholderRule?.fixedText) {
     return placeholderRule.fixedText
   }
-  const placeholderPrefix =
-    placeholderRule && placeholderRule.placeholderPrefix
-      ? placeholderRule.placeholderPrefix
-      : DEFAULT_PLACEHOLDER_PREFIX
+  const placeholderPrefix = placeholderRule?.placeholderPrefix ?? DEFAULT_PLACEHOLDER_PREFIX
   const nextNumber = (counters[placeholderPrefix] || 0) + 1
   counters[placeholderPrefix] = nextNumber
-  return placeholderPrefix + ' ' + nextNumber
+  return `${placeholderPrefix} ${nextNumber}`
 }
 
 /**
  * Обезличивает атрибуты одного элемента
- * @param {Element} element элемент
- * @param {object} privacyRules правила
+ * @param {Element} element
+ * @param {object} privacyRules
  * @param {Record<string, number>} counters счётчики заменителей
  * @param {string} mode режим работы
  */
@@ -204,7 +201,7 @@ function anonymizeFixtureAttributes(element, privacyRules, counters, mode) {
 /**
  * Убирает узлы комментариев: клиент разделяет ими соседние текстовые узлы,
  * из-за чего без склейки один видимый текст дал бы несколько заменителей подряд
- * @param {Element} rootElement корень обработки
+ * @param {Element} rootElement
  */
 function removeFixtureCommentNodes(rootElement) {
   const pendingNodes = [rootElement]
@@ -224,8 +221,8 @@ function removeFixtureCommentNodes(rootElement) {
 
 /**
  * Обходит дерево, обезличивая атрибуты и тексты, после удаления скриптов и комментариев
- * @param {Element} rootElement корень обработки
- * @param {object} privacyRules правила
+ * @param {Element} rootElement
+ * @param {object} privacyRules
  * @param {Record<string, number>} counters счётчики заменителей
  * @param {string} mode режим работы
  * @returns {number} число обработанных элементов
@@ -273,7 +270,7 @@ function anonymizeFixtureTree(rootElement, privacyRules, counters, mode) {
 
 /**
  * Оставляет не больше десяти записей каждого типа: закреплённых, каталожных и обычных
- * @param {Element} rootElement корень обработки
+ * @param {Element} rootElement
  */
 function trimFixtureChatListEntries(rootElement) {
   const entryCounts = {}
@@ -297,7 +294,7 @@ function trimFixtureChatListEntries(rootElement) {
 /**
  * Готовит обезличенный фрагмент разметки
  * @param {string | Element} rootSelectorOrElement селектор корня или сам элемент
- * @param {object} privacyRules правила
+ * @param {object} privacyRules
  * @param {string} mode режим работы
  * @returns {string | number | null} разметка в режиме clone, число элементов в режиме in-place
  */
@@ -363,7 +360,7 @@ const SNIPPET_CONSTANTS = {
 
 /**
  * Собирает текст сниппета для консоли DevTools
- * @param {object} privacyRules правила приватности
+ * @param {object} privacyRules
  * @param {string} mode режим работы
  * @returns {string}
  */
@@ -389,10 +386,7 @@ function buildFixtureSnippetSource(privacyRules, mode) {
   ].join('\n')
 }
 
-/**
- * Читает белый список правил
- * @returns {object}
- */
+/** @returns {object} белый список правил обезличивания */
 function readFixturePrivacyRules() {
   return JSON.parse(
     fs.readFileSync(path.join(PROJECT_ROOT_PATH, PRIVACY_RULES_RELATIVE_PATH), UTF8_ENCODING),

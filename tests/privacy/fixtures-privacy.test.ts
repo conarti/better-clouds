@@ -65,10 +65,7 @@ const privacyRules = JSON.parse(
 
 const fixturesDirectoryPath = path.join(PROJECT_ROOT_PATH, FIXTURES_RELATIVE_PATH)
 
-/**
- * Список обезличенных фрагментов разметки
- * @returns имена файлов
- */
+/** Имена файлов обезличенных фрагментов разметки */
 function readFixtureFileNames(): string[] {
   return fs
     .readdirSync(fixturesDirectoryPath)
@@ -76,19 +73,12 @@ function readFixtureFileNames(): string[] {
     .sort()
 }
 
-/**
- * Проверяет значение по списку строковых шаблонов
- * @param value проверяемое значение
- * @param patterns шаблоны
- */
+/** Проверяет значение по списку строковых шаблонов */
 function matchesAnyPattern(value: string, patterns: readonly string[]): boolean {
   return patterns.some((pattern) => new RegExp(pattern).test(value))
 }
 
-/**
- * Текст разрешён, если он есть в белом списке UI-строк или похож на заменитель
- * @param text проверяемый текст
- */
+/** Текст разрешён, если он есть в белом списке UI-строк или похож на заменитель */
 function isAllowedText(text: string): boolean {
   return (
     privacyRules.allowedTexts.includes(text) ||
@@ -96,10 +86,7 @@ function isAllowedText(text: string): boolean {
   )
 }
 
-/**
- * Имя атрибута структурное, если оно есть в белом списке или подходит под шаблон с `*`
- * @param attributeName имя атрибута
- */
+/** Имя атрибута структурное, если оно есть в белом списке или подходит под шаблон с `*` */
 function isStructuralAttributeName(attributeName: string): boolean {
   return privacyRules.structuralAttributeNames.some((allowedName) =>
     allowedName.endsWith(WILDCARD_SUFFIX)
@@ -108,21 +95,14 @@ function isStructuralAttributeName(attributeName: string): boolean {
   )
 }
 
-/**
- * Ищет в строке следы персональных данных
- * @param value проверяемая строка
- * @param location описание места находки
- */
+/** Ищет в строке следы персональных данных; location описывает место находки в отчёте */
 function findPersonalDataViolations(value: string, location: string): string[] {
   return PERSONAL_DATA_PATTERNS.filter(({ pattern }) => pattern.test(value)).map(
     ({ name }) => `${location}: ${name}`,
   )
 }
 
-/**
- * Проверяет атрибуты одного элемента
- * @param element проверяемый элемент
- */
+/** Проверяет атрибуты одного элемента */
 function findAttributeViolations(element: Element): string[] {
   const violations: string[] = []
   for (const attributeName of element.getAttributeNames()) {
@@ -160,10 +140,7 @@ function findAttributeViolations(element: Element): string[] {
   return violations
 }
 
-/**
- * Проверяет обезличенный фрагмент разметки
- * @param fixtureHtml разметка фрагмента
- */
+/** Проверяет обезличенный фрагмент разметки */
 function findPrivacyViolations(fixtureHtml: string): string[] {
   const violations: string[] = []
   if (SCRIPT_ELEMENT_PATTERN.test(fixtureHtml)) {
