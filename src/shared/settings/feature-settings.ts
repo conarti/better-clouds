@@ -93,35 +93,18 @@ export function createFeatureSettingsSource({
      * выключать остальные функции.
      */
     async getAllEnabled() {
-      const readResults = await Promise.allSettled(
-        settingsEntries.map(({ item }) => item.getValue()),
+      const enabledEntries = await Promise.all(
+        settingsEntries.map(async ({ featureMeta, item }): Promise<[string, boolean]> => {
+          try {
+            return [featureMeta.id, readEnabledFlag(await item.getValue(), featureMeta)]
+          } catch (readError) {
+            logger.warn(SETTINGS_READ_FAILURE_MESSAGE, featureMeta.id, readError)
+            return [featureMeta.id, featureMeta.defaultEnabled]
+          }
+        }),
       )
-      const enabledByFeatureId = new Map<string, boolean>()
 
-      readResults.forEach((readResult, entryIndex) => {
-        const settingsEntry = settingsEntries[entryIndex]
-        if (!settingsEntry) {
-          return
-        }
-        if (readResult.status === 'rejected') {
-          logger.warn(
-            SETTINGS_READ_FAILURE_MESSAGE,
-            settingsEntry.featureMeta.id,
-            readResult.reason,
-          )
-          enabledByFeatureId.set(
-            settingsEntry.featureMeta.id,
-            settingsEntry.featureMeta.defaultEnabled,
-          )
-          return
-        }
-        enabledByFeatureId.set(
-          settingsEntry.featureMeta.id,
-          readEnabledFlag(readResult.value, settingsEntry.featureMeta),
-        )
-      })
-
-      return enabledByFeatureId
+      return new Map(enabledEntries)
     },
 
     watchEnabled(featureMeta, callback) {
