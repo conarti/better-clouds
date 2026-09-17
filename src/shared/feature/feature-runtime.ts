@@ -152,8 +152,19 @@ export function createFeatureRuntime({
     }
   }
 
-  function handleMountFailure(featureId: string, mountError: unknown): void {
+  /**
+   * Асинхронное монтирование может отклониться уже после того, как функцию выключили и снова
+   * включили, поэтому выключается только та активация, которая монтировалась.
+   */
+  function handleMountFailure(
+    activation: FeatureActivation,
+    featureId: string,
+    mountError: unknown,
+  ): void {
     logger.error(MOUNT_FAILURE_MESSAGE, featureId, mountError)
+    if (activations.get(featureId) !== activation) {
+      return
+    }
     disableFeature(featureId)
   }
 
@@ -194,14 +205,14 @@ export function createFeatureRuntime({
             registerFeatureCleanup(activation, cleanup)
           },
           (mountError: unknown) => {
-            handleMountFailure(featureId, mountError)
+            handleMountFailure(activation, featureId, mountError)
           },
         )
         return
       }
       registerFeatureCleanup(activation, mountResult)
     } catch (mountError) {
-      handleMountFailure(featureId, mountError)
+      handleMountFailure(activation, featureId, mountError)
     }
   }
 

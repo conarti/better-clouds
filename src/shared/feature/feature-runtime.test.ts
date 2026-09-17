@@ -29,6 +29,8 @@ const OTHER_ROUTE_HASH = '#/settings/main'
 const MISSING_ANCHOR_SELECTOR = '.stub-feature-anchor'
 const CLASS_SELECTOR_PREFIX_LENGTH = 1
 const STUB_STYLE_TEXT = 'html[data-stub] { color: red; }'
+const MOUNT_CALL_COUNT_AFTER_TOGGLE = 2
+const MOUNT_FAILURE_ERROR_MESSAGE = 'Монтирование не удалось'
 
 const FAKE_TIMER_METHODS = [
   'setTimeout',
@@ -372,6 +374,45 @@ describe('createFeatureRuntime', () => {
     expect(fakeContentScriptContext.directInvalidationSubscriptionCount).toBe(1)
     expect(fakeContentScriptContext.setIntervalCallCount).toBe(1)
     expect(document.querySelectorAll(STYLE_ELEMENT_SELECTOR)).toHaveLength(1)
+
+    featureRuntime.stop()
+  })
+
+  it('отклонённое монтирование не выключает новое включение той же функции', async () => {
+    const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
+    const logger = createTestLogger()
+    const rejectMountCallbacks: Array<(mountError: Error) => void> = []
+    const mountPromises: Array<Promise<void>> = []
+    const mount = vi.fn(() => {
+      const mountPromise = new Promise<void>((_resolve, reject) => {
+        rejectMountCallbacks.push(reject)
+      })
+      mountPromises.push(mountPromise)
+      return mountPromise
+    })
+    const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
+    const featureRuntime = createFeatureRuntime({
+      featureMetas: [featureMeta],
+      featureContents: [{ meta: featureMeta, styles: STUB_STYLE_TEXT, mount }],
+      documentRoot: document,
+      settingsSource: settings.source,
+      contentScriptLifecycle: new FakeContentScriptContext(),
+      logger,
+    })
+    await featureRuntime.start()
+
+    settings.setEnabled(FIRST_FEATURE_ID, false)
+    settings.setEnabled(FIRST_FEATURE_ID, true)
+    expect(mount).toHaveBeenCalledTimes(MOUNT_CALL_COUNT_AFTER_TOGGLE)
+
+    const [rejectFirstMount] = rejectMountCallbacks as [(mountError: Error) => void]
+    const [firstMountPromise] = mountPromises as [Promise<void>]
+    rejectFirstMount(new Error(MOUNT_FAILURE_ERROR_MESSAGE))
+    await firstMountPromise.catch(() => undefined)
+
+    expect(logger.error).toHaveBeenCalledTimes(1)
+    expect(isFeatureEnabled(FIRST_FEATURE_ID)).toBe(true)
+    expect(findStyleElement(FIRST_FEATURE_ID)?.hasAttribute(MEDIA_ATTRIBUTE_NAME)).toBe(false)
 
     featureRuntime.stop()
   })
