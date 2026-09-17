@@ -18,9 +18,6 @@ const FINDING_SEPARATOR = ': '
  */
 const SITE_ATTRIBUTE_NAMES_WITHOUT_DATA_PREFIX = ['theme', 'reduced_animations', 'aria-selected']
 
-/** Имена классов сайта, совпадения с которыми разрешены, каждое с обоснованием */
-const ISOLATION_IGNORED_CLASS_NAMES: ReadonlyMap<string, string> = new Map()
-
 /** Теги, после которых класс в селекторе не отличить от обращения к свойству объекта */
 const TAG_NAMES_BEFORE_CLASS =
   'html|body|div|span|nav|button|a|input|ul|li|svg|section|header|aside|main|label|img|p'
@@ -65,10 +62,6 @@ function collectFixtureNames(): { classNames: string[]; attributeNames: string[]
         }
       }
     }
-  }
-
-  for (const ignoredClassName of ISOLATION_IGNORED_CLASS_NAMES.keys()) {
-    classNames.delete(ignoredClassName)
   }
 
   return { classNames: [...classNames], attributeNames: [...attributeNames] }
