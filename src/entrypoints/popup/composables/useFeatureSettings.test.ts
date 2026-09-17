@@ -13,6 +13,7 @@ const STUB_FEATURE_META: FeatureMeta = {
 
 const FEATURE_METAS = [STUB_FEATURE_META]
 const STORAGE_AREA_KEY = `feature.${STUB_FEATURE_META.id}`
+const STORAGE_FAILURE_MESSAGE = 'Хранилище недоступно'
 
 async function withFeatureSettings(
   assertion: (featureSettings: FeatureSettingsState) => Promise<void>,
@@ -55,6 +56,27 @@ describe('useFeatureSettings', () => {
       expect(featureSettings.enabledByFeatureId.value[STUB_FEATURE_META.id]).toBe(false)
       const storedRecord = await fakeBrowser.storage.sync.get(STORAGE_AREA_KEY)
       expect(storedRecord[STORAGE_AREA_KEY]).toEqual({ enabled: false })
+    })
+  })
+
+  it('при ошибке записи тумблер возвращается к прежнему значению', async () => {
+    await withFeatureSettings(async (featureSettings) => {
+      await vi.waitFor(() => {
+        expect(featureSettings.isLoaded.value).toBe(true)
+      })
+      const failingWrite = vi
+        .spyOn(fakeBrowser.storage.sync, 'set')
+        .mockRejectedValue(new Error(STORAGE_FAILURE_MESSAGE))
+
+      try {
+        await featureSettings.setFeatureEnabled(STUB_FEATURE_META.id, false)
+        expect(featureSettings.enabledByFeatureId.value[STUB_FEATURE_META.id]).toBe(true)
+      } finally {
+        failingWrite.mockRestore()
+      }
+
+      const storedRecord = await fakeBrowser.storage.sync.get(STORAGE_AREA_KEY)
+      expect(storedRecord[STORAGE_AREA_KEY]).toBeUndefined()
     })
   })
 

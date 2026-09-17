@@ -60,17 +60,25 @@ export function useFeatureSettings(
     isLoaded.value = true
   })
 
+  /**
+   * Значение меняется сразу, чтобы тумблер не ждал хранилища. Если запись не удалась,
+   * прежнее значение возвращается, а функция снова считается непрочитанной: иначе тумблер
+   * показывал бы состояние, которого в хранилище нет, и чтение не могло бы его поправить.
+   */
   async function setFeatureEnabled(featureId: string, isEnabled: boolean): Promise<void> {
     const featureMeta = featureMetaById.get(featureId)
     if (featureMeta === undefined) {
       return
     }
+    const previousEnabled = enabledByFeatureId.value[featureId] ?? featureMeta.defaultEnabled
     knownFeatureIds.add(featureId)
     enabledByFeatureId.value = { ...enabledByFeatureId.value, [featureId]: isEnabled }
     try {
       await settingsSource.setEnabled(featureMeta, isEnabled)
     } catch (writeError) {
       logger.error(SETTINGS_WRITE_FAILURE_MESSAGE, featureId, writeError)
+      knownFeatureIds.delete(featureId)
+      enabledByFeatureId.value = { ...enabledByFeatureId.value, [featureId]: previousEnabled }
     }
   }
 
