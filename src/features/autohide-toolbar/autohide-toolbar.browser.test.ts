@@ -15,6 +15,8 @@ const EMPTY_TOOLBAR_FIXTURE_FILE_NAME = 'toolbar-notifications-none.html'
 const MENU_OPEN_TOOLBAR_FIXTURE_FILE_NAME = 'toolbar-menu-open.html'
 const CHAT_CONTEXT_MENU_FIXTURE_FILE_NAME = 'chat-context-menu-open.html'
 const LOGIN_PAGE_FIXTURE_FILE_NAME = 'login-page.html'
+const CHAT_LIST_FIXTURE_FILE_NAME = 'layout-all-chats.html'
+const NO_MATCHED_RULE_COUNT = 0
 
 /** Ширина видимой полосы в покое: та же величина, что и в стилях функции */
 const EDGE_STRIP_WIDTH_PIXELS = 8
@@ -223,16 +225,25 @@ describe('autohide-toolbar', () => {
     }
   })
 
-  it('на странице входа ни одно наше правило не совпадает', () => {
+  function countMatchedRules(fixtureFileName: string): number {
     fixture = mountFeatureFixture({
       featureId: featureMeta.id,
       featureStyles,
-      fixtureHtmlList: [loadFixture(LOGIN_PAGE_FIXTURE_FILE_NAME)],
+      fixtureHtmlList: [loadFixture(fixtureFileName)],
     })
     const styleRules = collectStyleRules(fixture.featureStyleElement)
-    expect(styleRules.length).toBeGreaterThan(0)
-    for (const styleRule of styleRules) {
-      expect(fixture.container.querySelectorAll(styleRule.selectorText)).toHaveLength(0)
-    }
+    expect(styleRules.length).toBeGreaterThan(NO_MATCHED_RULE_COUNT)
+    return styleRules.filter(
+      (styleRule) => fixture.container.querySelectorAll(styleRule.selectorText).length > 0,
+    ).length
+  }
+
+  it('на странице входа ни одно наше правило не совпадает', () => {
+    expect(countMatchedRules(LOGIN_PAGE_FIXTURE_FILE_NAME)).toBe(NO_MATCHED_RULE_COUNT)
+  })
+
+  /* Парная проба: на разметке со списком чатов тот же счёт даёт совпадения, иначе он ложно-зелёный */
+  it('самопроверка: на разметке списка чатов правила совпадают', () => {
+    expect(countMatchedRules(CHAT_LIST_FIXTURE_FILE_NAME)).toBeGreaterThan(NO_MATCHED_RULE_COUNT)
   })
 })
