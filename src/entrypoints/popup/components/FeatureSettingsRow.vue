@@ -36,6 +36,7 @@ const emit = defineEmits<{ 'update:enabled': [value: boolean] }>()
 
 .feature-row__text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
 }
