@@ -74,6 +74,16 @@ const CENTER_COLUMN_FIXTURE_HTML = `<div class="${siteSelectors.layoutPaneCenter
   CLASS_SELECTOR_PREFIX_LENGTH,
 )}"></div>`
 
+/** Резерв под правую панель из формулы трёхколоночного режима и ширина самой панели */
+const THREE_COLUMNS_RIGHT_PANEL_RESERVED_PIXELS = 484
+const RIGHT_PANEL_WIDTH_PIXELS = 400
+/** Резерв под другую панель встроенного полноэкранного режима */
+const EMBEDDED_FULL_RESERVED_PIXELS = 340
+
+const RIGHT_PANEL_FIXTURE_HTML = `<div class="${siteSelectors.rightPanelContainer.slice(
+  CLASS_SELECTOR_PREFIX_LENGTH,
+)}"></div>`
+
 /**
  * Разведка живой страницы v3.70.x: сайт резервирует колонке переписки место под колонку
  * навигации через max-width, а в @media screen and (max-width: 1920px) сужает резерв до 64px
@@ -94,6 +104,40 @@ const centerColumnSiteStyles = css`
         100% - ${SITE_TOOLBAR_NARROW_WINDOW_WIDTH_PIXELS}px - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY})
       );
     }
+  }
+`
+
+/**
+ * Разведка живой страницы v3.70.x: трёхколоночный режим резервирует колонке переписки
+ * место под правую панель формулой с фиксированным числом вместо ширины колонки навигации
+ */
+const threeColumnsSiteStyles = css`
+  :root {
+    ${SITE_LEFT_COLUMN_WIDTH_PROPERTY}: ${SITE_LEFT_COLUMN_WIDTH_PIXELS}px;
+  }
+  ${siteSelectors.layoutPaneCenter} {
+    flex-grow: 1;
+  }
+  ${siteSelectors.layoutPaneThreeColumns} ${siteSelectors.layoutPaneCenter} {
+    max-width: calc(
+      100% - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY}) - ${THREE_COLUMNS_RIGHT_PANEL_RESERVED_PIXELS}px
+    );
+    overflow: hidden;
+  }
+  ${siteSelectors.rightPanelContainer} {
+    width: ${RIGHT_PANEL_WIDTH_PIXELS}px;
+    min-width: ${RIGHT_PANEL_WIDTH_PIXELS}px;
+  }
+`
+
+/**
+ * Разведка живой страницы v3.70.x: встроенный полноэкранный режим резервирует колонке
+ * переписки место под другую панель, резерва под колонку навигации в этой формуле нет
+ */
+const embeddedFullSiteStyles = css`
+  ${siteSelectors.layoutPaneEmbeddedFull} ${siteSelectors.layoutPaneCenter} {
+    width: 100%;
+    max-width: calc(100% - ${EMBEDDED_FULL_RESERVED_PIXELS}px);
   }
 `
 
@@ -214,6 +258,63 @@ describe('autohide-toolbar', () => {
     expect(readLayoutPaneRect().right - readCenterColumnRect().right).toBeGreaterThan(
       MINIMUM_RESERVED_GAP_PIXELS,
     )
+  })
+
+  function addLayoutPaneModifierClass(modifierClassSelector: string): void {
+    findRequiredElement(fixture.container, siteSelectors.layoutPane).classList.add(
+      modifierClassSelector.slice(CLASS_SELECTOR_PREFIX_LENGTH),
+    )
+  }
+
+  function mountToolbarWithThreeColumns(): void {
+    fixture = mountFeatureFixture({
+      featureId: featureMeta.id,
+      featureStyles,
+      fixtureHtmlList: [
+        loadFixture(EMPTY_TOOLBAR_FIXTURE_FILE_NAME),
+        CENTER_COLUMN_FIXTURE_HTML,
+        RIGHT_PANEL_FIXTURE_HTML,
+      ],
+      siteStyles: siteStyles + threeColumnsSiteStyles,
+      wrapInLayoutPane: true,
+    })
+    addLayoutPaneModifierClass(siteSelectors.layoutPaneThreeColumns)
+  }
+
+  it('в трёхколоночном режиме заполняет колонку переписки до правой панели без разрыва', () => {
+    mountToolbarWithThreeColumns()
+    const rightPanelRect = findRequiredElement(
+      fixture.container,
+      siteSelectors.rightPanelContainer,
+    ).getBoundingClientRect()
+    const centerColumnRect = readCenterColumnRect()
+    const layoutPaneRect = readLayoutPaneRect()
+
+    expect(Math.abs(rightPanelRect.width - RIGHT_PANEL_WIDTH_PIXELS)).toBeLessThanOrEqual(
+      MAXIMUM_POSITION_DIFFERENCE_PIXELS,
+    )
+    expect(Math.abs(centerColumnRect.right - rightPanelRect.left)).toBeLessThanOrEqual(
+      MAXIMUM_POSITION_DIFFERENCE_PIXELS,
+    )
+    expect(Math.abs(rightPanelRect.right - layoutPaneRect.right)).toBeLessThanOrEqual(
+      MAXIMUM_POSITION_DIFFERENCE_PIXELS,
+    )
+  })
+
+  function mountToolbarWithEmbeddedFull(): void {
+    fixture = mountFeatureFixture({
+      featureId: featureMeta.id,
+      featureStyles,
+      fixtureHtmlList: [loadFixture(EMPTY_TOOLBAR_FIXTURE_FILE_NAME), CENTER_COLUMN_FIXTURE_HTML],
+      siteStyles: siteStyles + embeddedFullSiteStyles,
+      wrapInLayoutPane: true,
+    })
+    addLayoutPaneModifierClass(siteSelectors.layoutPaneEmbeddedFull)
+  }
+
+  it('во встроенном полноэкранном режиме сохраняет резерв сайта под другую панель', () => {
+    mountToolbarWithEmbeddedFull()
+    expect(readCenterColumnStyle().maxWidth).not.toBe(NO_RESERVED_MAX_WIDTH_VALUE)
   })
 
   it('показывает точку при непрочитанных уведомлениях', () => {

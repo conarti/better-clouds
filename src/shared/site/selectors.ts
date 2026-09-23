@@ -26,6 +26,16 @@ export const siteSelectors = {
    */
   layoutPaneEmbeddedFull: '.layout-pane--embedded--full',
   /**
+   * Модификатор трёхколоночного режима: справа от колонки переписки открыта ещё одна
+   * панель, сайт резервирует ей место в формуле max-width колонки (разведка живой страницы v3.70.x)
+   */
+  layoutPaneThreeColumns: '.layout-pane--three-cols',
+  /**
+   * Контейнер правой панели трёхколоночного режима: сосед колонки переписки в потоке,
+   * не входит в .layout-pane (разведка живой страницы v3.70.x)
+   */
+  rightPanelContainer: '.right-panel-container',
+  /**
    * Тело колонки (левой и центральной): высота считается через calc от 100dvh с вычетом переменной
    * --app-top-padding-height (разведка живой страницы v3.70.x)
    */
