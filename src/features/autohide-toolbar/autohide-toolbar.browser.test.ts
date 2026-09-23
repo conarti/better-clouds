@@ -24,7 +24,6 @@ const EDGE_STRIP_WIDTH_PIXELS = 8
 const MAXIMUM_POSITION_DIFFERENCE_PIXELS = 1
 const EXPANDED_LEFT_VALUE = '0px'
 const EMPTY_CONTENT_VALUE = 'none'
-const TRANSPARENT_COLOR_VALUE = 'rgba(0, 0, 0, 0)'
 const REST_TRANSITION_DURATION = '0.15s'
 const REST_TRANSITION_DELAY = '0.4s'
 const DISABLED_TRANSITION_DURATION = '0s'
@@ -135,13 +134,6 @@ describe('autohide-toolbar', () => {
     expect(toolbarStyle.left).toBe('auto')
     expect(toolbarStyle.marginRight).toBe('0px')
     expect(toolbarStyle.clipPath).toBe(EMPTY_CONTENT_VALUE)
-  })
-
-  it('рисует линию у края окна цветом темы клиента', () => {
-    mountToolbar([EMPTY_TOOLBAR_FIXTURE_FILE_NAME])
-    const edgeLineStyle = getComputedStyle(findToolbarElement(), '::after')
-    expect(edgeLineStyle.content).not.toBe(EMPTY_CONTENT_VALUE)
-    expect(edgeLineStyle.backgroundColor).not.toBe(TRANSPARENT_COLOR_VALUE)
   })
 
   it('показывает точку при непрочитанных уведомлениях', () => {

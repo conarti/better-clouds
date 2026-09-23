@@ -95,6 +95,4 @@ export const siteAttributeNames = {
 export const siteCustomPropertyNames = {
   /** Цвет точки непрочитанных у спрятанной колонки */
   buttonPrimary: '--button-primary',
-  /** Цвет линии у края окна, по которой видно спрятанную колонку */
-  textAccent: '--text-accent',
 } as const

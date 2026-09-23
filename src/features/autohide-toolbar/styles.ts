@@ -18,10 +18,6 @@ const TOOLBAR_WIDE_WINDOW_WIDTH_PIXELS = 84
 const TOOLBAR_NARROW_WINDOW_WIDTH_PIXELS = 64
 const TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS = 1919
 
-/** Линия у края окна, по которой видно спрятанную колонку (разведка D13: цвет из темы сайта) */
-const EDGE_LINE_WIDTH_PIXELS = 2
-const EDGE_LINE_RIGHT_PIXELS = 3
-
 /** Точка непрочитанных уведомлений: центр колокольчика в 104px от низа колонки (разведка D5) */
 const NOTIFICATION_DOT_SIZE_PIXELS = 8
 const NOTIFICATION_DOT_BOTTOM_PIXELS = 100
@@ -40,7 +36,6 @@ const TOOLBAR_HIDDEN_OFFSET_PROPERTY = '--better-clouds-toolbar-hidden-offset'
 const TOOLBAR_SHOW_DURATION_PROPERTY = '--better-clouds-toolbar-show-duration'
 const TOOLBAR_HIDE_DURATION_PROPERTY = '--better-clouds-toolbar-hide-duration'
 const TOOLBAR_HIDE_DELAY_PROPERTY = '--better-clouds-toolbar-hide-delay'
-const EDGE_LINE_COLOR_PROPERTY = '--better-clouds-edge-line-color'
 const NOTIFICATION_DOT_COLOR_PROPERTY = '--better-clouds-notification-dot-color'
 
 const TOOLBAR_EXPANDED_SHADOW = '4px 0 16px rgb(0 0 0 / 12%)'
@@ -72,7 +67,7 @@ const expandedToolbarSelectors = [
 
 const expandedToolbarSelectorList = expandedToolbarSelectors.join(SELECTOR_SEPARATOR)
 const expandedToolbarMarkerSelectorList = expandedToolbarSelectors
-  .flatMap((expandedSelector) => [`${expandedSelector}::before`, `${expandedSelector}::after`])
+  .map((expandedSelector) => `${expandedSelector}::before`)
   .join(SELECTOR_SEPARATOR)
 
 /**
@@ -90,7 +85,6 @@ export const featureStyles = css`
     ${TOOLBAR_SHOW_DURATION_PROPERTY}: ${TOOLBAR_SHOW_DURATION_MILLISECONDS}ms;
     ${TOOLBAR_HIDE_DURATION_PROPERTY}: ${TOOLBAR_HIDE_DURATION_MILLISECONDS}ms;
     ${TOOLBAR_HIDE_DELAY_PROPERTY}: ${TOOLBAR_HIDE_DELAY_MILLISECONDS}ms;
-    ${EDGE_LINE_COLOR_PROPERTY}: var(${siteCustomPropertyNames.textAccent}, currentColor);
     ${NOTIFICATION_DOT_COLOR_PROPERTY}: var(${siteCustomPropertyNames.buttonPrimary}, currentColor);
   }
   @media screen and (max-width: ${TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS}px) {
@@ -118,15 +112,6 @@ export const featureStyles = css`
     box-shadow: ${TOOLBAR_EXPANDED_SHADOW};
     transition-duration: var(${TOOLBAR_SHOW_DURATION_PROPERTY}) !important;
     transition-delay: ${INSTANT_DELAY_MILLISECONDS}ms !important;
-  }
-  ${featureScope} ${siteSelectors.toolbar}::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: ${EDGE_LINE_RIGHT_PIXELS}px;
-    width: ${EDGE_LINE_WIDTH_PIXELS}px;
-    background: var(${EDGE_LINE_COLOR_PROPERTY});
   }
   ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
     content: '';
