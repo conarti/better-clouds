@@ -14,6 +14,11 @@ export const siteSelectors = {
   /** Левая колонка со списком чатов, ширина из переменной сайта --left-column-width */
   layoutPaneLeft: '.layout-pane__left',
   /**
+   * Тело колонки (левой и центральной): высота считается через calc от 100dvh с вычетом переменной
+   * --app-top-padding-height (разведка живой страницы v3.70.x)
+   */
+  layoutPaneBody: '.layout-pane__body',
+  /**
    * Колонка навигации слева. Уточнение через родителя обязательно: класс .toolbar встречается
    * и у вспомогательных узлов контекстного меню внутри записей списка
    */
@@ -95,4 +100,10 @@ export const siteAttributeNames = {
 export const siteCustomPropertyNames = {
   /** Цвет точки непрочитанных у спрятанной колонки */
   buttonPrimary: '--button-primary',
+  /**
+   * Отступ сверху центральной колонки: сайт вычитает его же из высоты .layout-pane__body
+   * (разведка живой страницы v3.70.x: :root задаёт 16px, .layout-pane берёт его в padding-top,
+   * .layout-pane__body вычитает его из calc(100dvh - 60px - var(...)))
+   */
+  appTopPaddingHeight: '--app-top-padding-height',
 } as const
