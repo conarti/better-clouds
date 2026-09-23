@@ -59,6 +59,44 @@ const siteStyles = css`
   }
 `
 
+const CLASS_SELECTOR_PREFIX_LENGTH = 1
+const NO_RESERVED_MAX_WIDTH_VALUE = 'none'
+const MINIMUM_RESERVED_GAP_PIXELS = 4
+
+/**
+ * Заполнитель ширины левой колонки: у фрагмента нет самого элемента колонки списка чатов,
+ * поэтому переменная нужна лишь для того, чтобы формула резерва сайта осталась вычислимой
+ */
+const SITE_LEFT_COLUMN_WIDTH_PROPERTY = '--left-column-width'
+const SITE_LEFT_COLUMN_WIDTH_PIXELS = 400
+
+const CENTER_COLUMN_FIXTURE_HTML = `<div class="${siteSelectors.layoutPaneCenter.slice(
+  CLASS_SELECTOR_PREFIX_LENGTH,
+)}"></div>`
+
+/**
+ * Разведка живой страницы v3.70.x: сайт резервирует колонке переписки место под колонку
+ * навигации через max-width, а в @media screen and (max-width: 1920px) сужает резерв до 64px
+ */
+const centerColumnSiteStyles = css`
+  :root {
+    ${SITE_LEFT_COLUMN_WIDTH_PROPERTY}: ${SITE_LEFT_COLUMN_WIDTH_PIXELS}px;
+  }
+  ${siteSelectors.layoutPaneCenter} {
+    flex-grow: 1;
+    max-width: calc(
+      100% - ${SITE_TOOLBAR_WIDE_WINDOW_WIDTH_PIXELS}px - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY})
+    );
+  }
+  @media screen and (max-width: ${SITE_TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS}px) {
+    ${siteSelectors.layoutPaneCenter} {
+      max-width: calc(
+        100% - ${SITE_TOOLBAR_NARROW_WINDOW_WIDTH_PIXELS}px - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY})
+      );
+    }
+  }
+`
+
 /**
  * Правило доступности клиента из разведки D13: оно объявляет весь набор transition-*
  * с !important и специфичностью (0,6,1), поэтому наши переходы объявлены с !important.
@@ -134,6 +172,48 @@ describe('autohide-toolbar', () => {
     expect(toolbarStyle.left).toBe('auto')
     expect(toolbarStyle.marginRight).toBe('0px')
     expect(toolbarStyle.clipPath).toBe(EMPTY_CONTENT_VALUE)
+  })
+
+  function mountToolbarWithCenterColumn(): void {
+    fixture = mountFeatureFixture({
+      featureId: featureMeta.id,
+      featureStyles,
+      fixtureHtmlList: [loadFixture(EMPTY_TOOLBAR_FIXTURE_FILE_NAME), CENTER_COLUMN_FIXTURE_HTML],
+      siteStyles: siteStyles + centerColumnSiteStyles,
+      wrapInLayoutPane: true,
+    })
+  }
+
+  function readCenterColumnStyle(): CSSStyleDeclaration {
+    return getComputedStyle(findRequiredElement(fixture.container, siteSelectors.layoutPaneCenter))
+  }
+
+  function readCenterColumnRect(): DOMRect {
+    return findRequiredElement(
+      fixture.container,
+      siteSelectors.layoutPaneCenter,
+    ).getBoundingClientRect()
+  }
+
+  function readLayoutPaneRect(): DOMRect {
+    return findRequiredElement(fixture.container, siteSelectors.layoutPane).getBoundingClientRect()
+  }
+
+  it('снимает резерв под колонку навигации и убирает пустую полосу у правого края', () => {
+    mountToolbarWithCenterColumn()
+    expect(readCenterColumnStyle().maxWidth).toBe(NO_RESERVED_MAX_WIDTH_VALUE)
+    expect(Math.abs(readCenterColumnRect().right - readLayoutPaneRect().right)).toBeLessThanOrEqual(
+      MAXIMUM_POSITION_DIFFERENCE_PIXELS,
+    )
+  })
+
+  it('без атрибута функции сайт сохраняет резерв и пустую полосу у правого края', () => {
+    mountToolbarWithCenterColumn()
+    fixture.setEnabled(false)
+    expect(readCenterColumnStyle().maxWidth).not.toBe(NO_RESERVED_MAX_WIDTH_VALUE)
+    expect(readLayoutPaneRect().right - readCenterColumnRect().right).toBeGreaterThan(
+      MINIMUM_RESERVED_GAP_PIXELS,
+    )
   })
 
   it('показывает точку при непрочитанных уведомлениях', () => {

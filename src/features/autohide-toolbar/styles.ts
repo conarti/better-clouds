@@ -113,6 +113,15 @@ export const featureStyles = css`
     transition-duration: var(${TOOLBAR_SHOW_DURATION_PROPERTY}) !important;
     transition-delay: ${INSTANT_DELAY_MILLISECONDS}ms !important;
   }
+  /**
+   * Резерв сайта под ширину колонки навигации в потоке не нужен: в потоке остаётся лишь
+   * EDGE_STRIP_WIDTH_PIXELS, а без снятия резерва у правого края остаётся пустая полоса.
+   * Встроенный полноэкранный режим резервирует место под другую панель, там правило не действует.
+   */
+  ${featureScope} ${siteSelectors.layoutPane}:not(${siteSelectors.layoutPaneEmbeddedFull})
+    > ${siteSelectors.layoutPaneCenter} {
+    max-width: none;
+  }
   ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
     content: '';
     position: absolute;
