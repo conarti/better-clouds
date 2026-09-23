@@ -85,6 +85,15 @@ const RIGHT_PANEL_FIXTURE_HTML = `<div class="${siteSelectors.rightPanelContaine
 )}"></div>`
 
 /**
+ * Разведка живой страницы v3.70.x: длинный однострочный текст в закреплённой шапке треда
+ * не переносится, поэтому без min-width: 0 колонка переписки растягивается по его ширине
+ */
+const LONG_UNBREAKABLE_CONTENT_WIDTH_PIXELS = 3000
+const LONG_UNBREAKABLE_CONTENT_FIXTURE_HTML = `<div class="${siteSelectors.layoutPaneCenter.slice(
+  CLASS_SELECTOR_PREFIX_LENGTH,
+)}"><div style="white-space: nowrap; width: ${LONG_UNBREAKABLE_CONTENT_WIDTH_PIXELS}px;"></div></div>`
+
+/**
  * Разведка живой страницы v3.70.x: сайт резервирует колонке переписки место под колонку
  * навигации через max-width, а в @media screen and (max-width: 1920px) сужает резерв до 64px
  */
@@ -257,6 +266,31 @@ describe('autohide-toolbar', () => {
     expect(readCenterColumnStyle().maxWidth).not.toBe(NO_RESERVED_MAX_WIDTH_VALUE)
     expect(readLayoutPaneRect().right - readCenterColumnRect().right).toBeGreaterThan(
       MINIMUM_RESERVED_GAP_PIXELS,
+    )
+  })
+
+  function mountToolbarWithLongUnbreakableCenterContent(): void {
+    fixture = mountFeatureFixture({
+      featureId: featureMeta.id,
+      featureStyles,
+      fixtureHtmlList: [
+        loadFixture(EMPTY_TOOLBAR_FIXTURE_FILE_NAME),
+        LONG_UNBREAKABLE_CONTENT_FIXTURE_HTML,
+      ],
+      siteStyles: siteStyles + centerColumnSiteStyles,
+      wrapInLayoutPane: true,
+    })
+  }
+
+  it('не растягивает колонку переписки шире окна при длинном неразрывном содержимом', () => {
+    mountToolbarWithLongUnbreakableCenterContent()
+    const centerColumnRect = readCenterColumnRect()
+    const layoutPaneRect = readLayoutPaneRect()
+    expect(centerColumnRect.right).toBeLessThanOrEqual(
+      layoutPaneRect.right + MAXIMUM_POSITION_DIFFERENCE_PIXELS,
+    )
+    expect(Math.abs(centerColumnRect.right - layoutPaneRect.right)).toBeLessThanOrEqual(
+      MAXIMUM_POSITION_DIFFERENCE_PIXELS,
     )
   })
 

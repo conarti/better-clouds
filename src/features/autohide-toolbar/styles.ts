@@ -117,10 +117,15 @@ export const featureStyles = css`
    * Резерв сайта под ширину колонки навигации в потоке не нужен: в потоке остаётся лишь
    * EDGE_STRIP_WIDTH_PIXELS, а без снятия резерва у правого края остаётся пустая полоса.
    * Встроенный полноэкранный режим резервирует место под другую панель, там правило не действует.
+   * Без max-width сайта пропадает и его роль ограничителя: у флекс-элемента по умолчанию
+   * min-width: auto, поэтому при длинном неразрывном содержимом (например, однострочный текст
+   * в закреплённой шапке треда) колонка растягивается по ширине контента шире окна;
+   * min-width: 0 возвращает ей возможность сжиматься до свободного места.
    */
   ${featureScope} ${siteSelectors.layoutPane}:not(${siteSelectors.layoutPaneEmbeddedFull})
     > ${siteSelectors.layoutPaneCenter} {
     max-width: none;
+    min-width: 0;
   }
   ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
     content: '';
