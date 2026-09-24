@@ -62,8 +62,10 @@ const siteStyles = css`
     left: 0;
     right: 0;
     height: calc(
-      100dvh - ${SITE_PANE_BODY_RESERVED_HEIGHT_PIXELS}px -
-        var(${siteCustomPropertyNames.appTopPaddingHeight})
+      100dvh -
+        ${SITE_PANE_BODY_RESERVED_HEIGHT_PIXELS}px - var(
+          ${siteCustomPropertyNames.appTopPaddingHeight}
+        )
     );
   }
 `
@@ -146,9 +148,7 @@ describe('wide-layout', () => {
   it('тело центральной колонки достаёт до низа окна без белой полосы', () => {
     const bodyBottomGapPixels =
       document.documentElement.clientHeight - readLayoutPaneBodyRect().bottom
-    expect(Math.abs(bodyBottomGapPixels)).toBeLessThanOrEqual(
-      MAXIMUM_BODY_BOTTOM_DIFFERENCE_PIXELS,
-    )
+    expect(Math.abs(bodyBottomGapPixels)).toBeLessThanOrEqual(MAXIMUM_BODY_BOTTOM_DIFFERENCE_PIXELS)
     expect(readLayoutPaneStyle().paddingTop).toBe(ZERO_LENGTH_VALUE)
   })
 

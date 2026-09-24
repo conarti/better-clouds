@@ -110,7 +110,8 @@ const centerColumnSiteStyles = css`
   @media screen and (max-width: ${SITE_TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS}px) {
     ${siteSelectors.layoutPaneCenter} {
       max-width: calc(
-        100% - ${SITE_TOOLBAR_NARROW_WINDOW_WIDTH_PIXELS}px - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY})
+        100% -
+          ${SITE_TOOLBAR_NARROW_WINDOW_WIDTH_PIXELS}px - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY})
       );
     }
   }
@@ -129,7 +130,8 @@ const threeColumnsSiteStyles = css`
   }
   ${siteSelectors.layoutPaneThreeColumns} ${siteSelectors.layoutPaneCenter} {
     max-width: calc(
-      100% - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY}) - ${THREE_COLUMNS_RIGHT_PANEL_RESERVED_PIXELS}px
+      100% - var(${SITE_LEFT_COLUMN_WIDTH_PROPERTY}) -
+        ${THREE_COLUMNS_RIGHT_PANEL_RESERVED_PIXELS}px
     );
     overflow: hidden;
   }
