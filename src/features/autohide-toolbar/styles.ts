@@ -22,11 +22,19 @@ const TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS = 1919
 const NOTIFICATION_DOT_SIZE_PIXELS = 8
 const NOTIFICATION_DOT_BOTTOM_PIXELS = 100
 
-const TOOLBAR_SHOW_DURATION_MILLISECONDS = 150
-const TOOLBAR_HIDE_DURATION_MILLISECONDS = 150
+const TOOLBAR_SHOW_DURATION_MILLISECONDS = 240
+const TOOLBAR_HIDE_DURATION_MILLISECONDS = 200
 const TOOLBAR_HIDE_DELAY_MILLISECONDS = 400
 const INSTANT_DELAY_MILLISECONDS = 0
 const DISABLED_ANIMATION_DURATION_MILLISECONDS = 0
+
+/**
+ * Раскрытие тормозит в самом конце (экспо-выпуклая кривая): колонка быстро выходит из-за
+ * края и мягко доходит до места, вместо разгона ease-in, который выглядит как рывок
+ * в конце движения. Скрытие наоборот ускоряется и растворяется у края.
+ */
+const TOOLBAR_SHOW_TIMING_FUNCTION = 'cubic-bezier(0.16, 1, 0.3, 1)'
+const TOOLBAR_HIDE_TIMING_FUNCTION = 'cubic-bezier(0.4, 0, 1, 1)'
 
 /** Разведка D7: выше меню и панелей списка (10 и 15), ниже тостов, тултипов и модальных окон */
 const TOOLBAR_Z_INDEX = 20
@@ -102,7 +110,7 @@ export const featureStyles = css`
     left: calc(-1 * var(${TOOLBAR_HIDDEN_OFFSET_PROPERTY}));
     clip-path: inset(0 0 0 var(${TOOLBAR_HIDDEN_OFFSET_PROPERTY}));
     transition-property: ${TRANSITIONED_PROPERTY_LIST} !important;
-    transition-timing-function: ease-in;
+    transition-timing-function: ${TOOLBAR_HIDE_TIMING_FUNCTION};
     transition-duration: var(${TOOLBAR_HIDE_DURATION_PROPERTY}) !important;
     transition-delay: var(${TOOLBAR_HIDE_DELAY_PROPERTY}) !important;
   }
@@ -110,6 +118,7 @@ export const featureStyles = css`
     left: 0;
     clip-path: ${TOOLBAR_EXPANDED_CLIP_PATH};
     box-shadow: ${TOOLBAR_EXPANDED_SHADOW};
+    transition-timing-function: ${TOOLBAR_SHOW_TIMING_FUNCTION} !important;
     transition-duration: var(${TOOLBAR_SHOW_DURATION_PROPERTY}) !important;
     transition-delay: ${INSTANT_DELAY_MILLISECONDS}ms !important;
   }
