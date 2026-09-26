@@ -25,6 +25,7 @@ const NOTIFICATION_DOT_BOTTOM_PIXELS = 100
 const TOOLBAR_SHOW_DURATION_MILLISECONDS = 240
 const TOOLBAR_HIDE_DURATION_MILLISECONDS = 200
 const TOOLBAR_HIDE_DELAY_MILLISECONDS = 400
+const NOTIFICATION_DOT_FADE_DURATION_MILLISECONDS = 200
 const INSTANT_DELAY_MILLISECONDS = 0
 const DISABLED_ANIMATION_DURATION_MILLISECONDS = 0
 
@@ -45,6 +46,7 @@ const TOOLBAR_SHOW_DURATION_PROPERTY = '--better-clouds-toolbar-show-duration'
 const TOOLBAR_HIDE_DURATION_PROPERTY = '--better-clouds-toolbar-hide-duration'
 const TOOLBAR_HIDE_DELAY_PROPERTY = '--better-clouds-toolbar-hide-delay'
 const NOTIFICATION_DOT_COLOR_PROPERTY = '--better-clouds-notification-dot-color'
+const NOTIFICATION_DOT_DURATION_PROPERTY = '--better-clouds-notification-dot-duration'
 
 const TOOLBAR_EXPANDED_SHADOW = '4px 0 16px rgb(0 0 0 / 12%)'
 const TOOLBAR_EXPANDED_CLIP_PATH = 'inset(-100vh -100vw -100vh 0)'
@@ -94,6 +96,7 @@ export const featureStyles = css`
     ${TOOLBAR_HIDE_DURATION_PROPERTY}: ${TOOLBAR_HIDE_DURATION_MILLISECONDS}ms;
     ${TOOLBAR_HIDE_DELAY_PROPERTY}: ${TOOLBAR_HIDE_DELAY_MILLISECONDS}ms;
     ${NOTIFICATION_DOT_COLOR_PROPERTY}: var(${siteCustomPropertyNames.buttonPrimary}, currentColor);
+    ${NOTIFICATION_DOT_DURATION_PROPERTY}: ${NOTIFICATION_DOT_FADE_DURATION_MILLISECONDS}ms;
   }
   @media screen and (max-width: ${TOOLBAR_NARROW_WINDOW_MAX_WIDTH_PIXELS}px) {
     ${featureScope} {
@@ -136,7 +139,11 @@ export const featureStyles = css`
     max-width: none;
     min-width: 0;
   }
-  ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
+  /**
+   * Точка живёт всегда и проявляется прозрачностью: псевдоэлемент с content появляется и
+   * исчезает мгновенно, поэтому видимость бейджа анимируется на opacity.
+   */
+  ${featureScope} ${siteSelectors.toolbar}::before {
     content: '';
     position: absolute;
     right: 0;
@@ -145,6 +152,13 @@ export const featureStyles = css`
     height: ${NOTIFICATION_DOT_SIZE_PIXELS}px;
     border-radius: 50%;
     background: var(${NOTIFICATION_DOT_COLOR_PROPERTY});
+    opacity: 0;
+    transition-property: opacity !important;
+    transition-timing-function: ease-out;
+    transition-duration: var(${NOTIFICATION_DOT_DURATION_PROPERTY}) !important;
+  }
+  ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
+    opacity: 1;
   }
   ${expandedToolbarMarkerSelectorList} {
     opacity: 0;
@@ -160,10 +174,12 @@ export const featureStyles = css`
     ${featureScope} {
       ${TOOLBAR_SHOW_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
       ${TOOLBAR_HIDE_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
+      ${NOTIFICATION_DOT_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
     }
   }
   ${featureScope} ${siteSelectors.reducedAnimationsBody} {
     ${TOOLBAR_SHOW_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
     ${TOOLBAR_HIDE_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
+    ${NOTIFICATION_DOT_DURATION_PROPERTY}: ${DISABLED_ANIMATION_DURATION_MILLISECONDS}ms;
   }
 `

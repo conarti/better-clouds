@@ -24,12 +24,14 @@ const EDGE_STRIP_WIDTH_PIXELS = 8
 const MAXIMUM_POSITION_DIFFERENCE_PIXELS = 1
 const EXPANDED_LEFT_VALUE = '0px'
 const EMPTY_CONTENT_VALUE = 'none'
+const VISIBLE_OPACITY_VALUE = '1'
+const INVISIBLE_OPACITY_VALUE = '0'
 const REST_TRANSITION_DURATION = '0.2s'
 const REST_TRANSITION_DELAY = '0.4s'
 const DISABLED_TRANSITION_DURATION = '0s'
 const REDUCED_ANIMATIONS_ATTRIBUTE_VALUE = 'true'
 const REDUCED_MOTION_MEDIA_CONDITION = 'prefers-reduced-motion'
-const DISABLED_DURATION_DECLARATION_COUNT = 2
+const DISABLED_DURATION_DECLARATION_COUNT = 3
 const FIRST_RULE_INDEX = 0
 const DISABLED_DURATION_VALUE = '0ms'
 const KEYBOARD_NAVIGATION_ATTRIBUTE_VALUE = ''
@@ -355,12 +357,13 @@ describe('autohide-toolbar', () => {
 
   it('показывает точку при непрочитанных уведомлениях', () => {
     mountToolbar([UNREAD_TOOLBAR_FIXTURE_FILE_NAME])
-    expect(getComputedStyle(findToolbarElement(), '::before').content).not.toBe(EMPTY_CONTENT_VALUE)
+    expect(getComputedStyle(findToolbarElement(), '::before').opacity).toBe(VISIBLE_OPACITY_VALUE)
   })
 
   it('не показывает точку без бейджа непрочитанных', () => {
     mountToolbar([EMPTY_TOOLBAR_FIXTURE_FILE_NAME])
-    expect(getComputedStyle(findToolbarElement(), '::before').content).toBe(EMPTY_CONTENT_VALUE)
+    expect(getComputedStyle(findToolbarElement(), '::before').content).not.toBe(EMPTY_CONTENT_VALUE)
+    expect(getComputedStyle(findToolbarElement(), '::before').opacity).toBe(INVISIBLE_OPACITY_VALUE)
   })
 
   it('раскрывает колонку при открытом меню самой колонки', () => {
