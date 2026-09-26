@@ -170,6 +170,12 @@ function createFakeSettingsSource(
         }
       },
       setEnabled: () => Promise.resolve(),
+      getValue: (featureMeta) =>
+        Promise.resolve({ enabled: initialEnabledByFeatureId.get(featureMeta.id) ?? false }),
+      updateValue: () => Promise.resolve(),
+      watchValue() {
+        return () => undefined
+      },
     },
     unwatchCallCount: () => unwatchCalls,
     setEnabled(featureId, isEnabled) {

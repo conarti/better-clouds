@@ -98,6 +98,66 @@ export const siteSelectors = {
    * с !important, поэтому наши переходы в нём требуют собственного !important
    */
   reducedAnimationsBody: 'body[reduced_animations]',
+  /**
+   * Кнопка секции колонки навигации без меню: иконка и заголовок. В селекторе функции
+   * секция уточняется позицией: идентификатор секции в разметку не выводится
+   * (разведка живой страницы v3.72.37)
+   */
+  toolbarSectionButton: '.section-button',
+  /**
+   * Обёртка секции колонки навигации с контекстным меню («Чаты», «Звонки»). Сам блок
+   * секции это .section-button внутри обёртки; обёртка прячется целиком, вместе с меню
+   * (разведка живой страницы v3.72.37)
+   */
+  toolbarSectionMenuWrapper: '.react-contextmenu-wrapper',
+  /** Блок умных приложений под колонкой навигации; сайт задаёт ему модификатор колонки */
+  toolbarSmartappSection: '.column.toolbar__smartapp-section',
+  /**
+   * Кнопка секции «Main»: вторая колонка внутри тулбара. Идентификатор секции в разметку
+   * не выводится, поэтому секция определяется позицией среди восьми детей .toolbar
+   * (разведка живой страницы v3.72.37); если сайт изменит порядок, селектор просто не
+   * найдёт элемента и ничего не спрячет
+   */
+  toolbarSectionMain: '.layout-pane > .toolbar > .section-button:nth-of-type(2)',
+  /** Секция «Чаты»: обёртка контекстного меню, третий ребёнок тулбара */
+  toolbarSectionChats: '.layout-pane > .toolbar > .react-contextmenu-wrapper:nth-of-type(3)',
+  /** Секция «Контакты»: четвёртый ребёнок тулбара */
+  toolbarSectionContacts: '.layout-pane > .toolbar > .section-button:nth-of-type(4)',
+  /** Секция «Звонки»: обёртка контекстного меню, пятый ребёнок тулбара */
+  toolbarSectionCalls: '.layout-pane > .toolbar > .react-contextmenu-wrapper:nth-of-type(5)',
+  /** Кнопка секции «SmartApps»: шестой ребёнок тулбара */
+  toolbarSectionSmartapps: '.layout-pane > .toolbar > .section-button:nth-of-type(6)',
+  /**
+   * Блок умных приложений под секциями: в отличие от кнопок определяется классом — у него
+   * он стабильный модификатор, а не позиция
+   */
+  toolbarSmartappSectionBlock: '.layout-pane > .toolbar > .column.toolbar__smartapp-section',
+  /**
+   * Колонка настроек вверху тулбара (аватар и статус): функция секции не трогает её,
+   * браузерный тест проверяет это отдельно
+   */
+  toolbarSettingsColumn: '.layout-pane > .toolbar > .column.settings-button',
+  /**
+   * Нижняя колонка тулбара (уведомления, сворачивание, версия): определяется позицией —
+   * восьмой ребёнок, у неё нет собственного модификатора
+   */
+  toolbarBottomColumn: '.layout-pane > .toolbar > .column:nth-of-type(8)',
+  /** Строка сообщения в переписке; сайт задаёт ей вертикальные отступы */
+  chatMessageRow: '.chat-message-row',
+  /**
+   * Внутренний блок строки сообщения: карман под аватар вырезается отрицательным
+   * отступом, текст отодвинут от левого края
+   */
+  chatMessageInner: '.chat-message-inner',
+  /** Контейнер аватара в записях списка и в строках сообщений */
+  chatAvatar: '.chat-avatar',
+  /**
+   * Аватар в записи списка чатов. Клиент задаёт его размеры inline-стилями, поэтому
+   * компактный режим перебивает их только с !important (разведка живой страницы v3.72.37)
+   */
+  chatListEntryAvatarInner: '.chat-avatar__inner',
+  /** Разделитель дат в переписке; компактный режим его не затрагивает */
+  dateSplitter: '.date-splitter',
 } as const
 
 /**

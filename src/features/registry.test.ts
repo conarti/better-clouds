@@ -31,6 +31,18 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     description: 'Не показывает во «Все чаты» ботов, с которыми нет переписки',
     defaultEnabled: true,
   },
+  {
+    id: 'compact-mode',
+    title: 'Компактный режим',
+    description: 'Уменьшает высоту строк в списке чатов и переписке',
+    defaultEnabled: true,
+  },
+  {
+    id: 'hide-toolbar-sections',
+    title: 'Секции тулбара',
+    description: 'Скрывает секции колонки навигации по отдельности',
+    defaultEnabled: true,
+  },
 ]
 
 const HAS_PSEUDO_CLASS = ':has('
