@@ -249,6 +249,23 @@ export const siteSelectors = {
    * (разведка живой страницы v3.72.37)
    */
   chatMessageVideoTime: '.chat-message__bubble > .chat-message__meta--video',
+  /**
+   * Время сообщения с картинкой, видео или альбомом без подписи, найденное по заголовку пузыря,
+   * а не по модификатору времени: --image или --video клиент ставит только после загрузки превью,
+   * до этого блок без модификаторов тоже лежит абсолютно поверх превью. Заголовок получает --media
+   * по типу сообщения сразу. Подпись даёт времени модификатор --text, реакции --reactions, в обоих
+   * случаях время уже под превью. Стикер и геопозиция расставляют время своими правилами и не
+   * входят (разведка живой страницы v3.72.37)
+   */
+  chatMessageMediaTime:
+    '.chat-message__bubble:not(.chat-message__bubble--sticker) > .chat-message__header--media ~ .chat-message__meta:not(.chat-message__meta--text):not(.chat-message__meta--reactions):not(.chat-message__meta--location)',
+  /**
+   * Значки статуса и счётчика просмотров во времени над превью: клиент красит их в белый под
+   * тёмную плашку (правило .chat-message__meta--image:not(.chat-message__meta--reactions),
+   * разведка живой страницы v3.72.37). Статус «прочитано» красится своим правилом и сюда не входит
+   */
+  chatMessageMediaTimeLightIcon:
+    ':is(.chat-message__status--local, .chat-message__status--received, .chat-message__status--sent, .message-view-counter svg)',
   /** Пузырь сообщения: relative, отступ 10px, предок блоков времени и превью (разведка v3.72.37) */
   chatMessageBubble: '.chat-message__bubble',
   /** Блок времени любого сообщения: у текстовых он абсолютный у нижнего правого угла пузыря */
@@ -329,6 +346,11 @@ export const siteCustomPropertyNames = {
   buttonPrimary: '--button-primary',
   /** Цвет невыбранной вкладки списка (правило клиента .tab, разведка v3.72.37) */
   textSecondary: '--text-secondary',
+  /**
+   * Цвет значка статуса сообщения: клиент задаёт его на .chat-message__status и красит значок
+   * через var(), у статуса последнего события значение своё (разведка живой страницы v3.72.37)
+   */
+  messageStatusIconColor: '--_icon-color',
   /**
    * Отступ сверху центральной колонки: сайт вычитает его же из высоты .layout-pane__body
    * (разведка живой страницы v3.70.x: :root задаёт 16px, .layout-pane берёт его в padding-top,

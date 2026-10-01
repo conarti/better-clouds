@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { css } from '@/shared/feature/css'
-import { siteSelectors } from '@/shared/site/selectors'
+import { siteCustomPropertyNames, siteSelectors } from '@/shared/site/selectors'
 import {
   findRequiredElement,
   mountFeatureFixture,
@@ -12,6 +12,10 @@ import { featureStyles } from './styles'
 
 const CONVERSATION_FIXTURE_FILE_NAME = 'conversation-media.html'
 const BUBBLE_PADDING_PIXELS = 10
+const STATUS_ICON_COLOR = 'rgb(1, 2, 3)'
+const LIGHT_ICON_COLOR = 'rgb(255, 255, 255)'
+/** Сообщения без подписи в фикстуре: своя картинка, своя картинка со статусом, картинка до загрузки превью, видео */
+const EXPECTED_MEDIA_TIME_COUNT = 4
 
 /**
  * Правила клиента для сообщений с медиа из разведки живой страницы v3.72.37: пузырь relative
@@ -20,6 +24,7 @@ const BUBBLE_PADDING_PIXELS = 10
  */
 const siteMessageStyles = css`
   ${siteSelectors.chatMessageBubble} {
+    ${siteCustomPropertyNames.messageStatusIconColor}: ${STATUS_ICON_COLOR};
     position: relative;
     display: block;
     padding: ${BUBBLE_PADDING_PIXELS}px;
@@ -40,6 +45,9 @@ const siteMessageStyles = css`
     background-color: rgba(0, 0, 0, 0.5);
     color: rgb(255, 255, 255);
   }
+  ${siteSelectors.chatMessageImageTime} ${siteSelectors.chatMessageMediaTimeLightIcon} {
+    color: ${LIGHT_ICON_COLOR};
+  }
   ${siteSelectors.chatMessagePicture}, ${siteSelectors.chatMessageVideo} {
     position: relative;
   }
@@ -55,46 +63,44 @@ const siteMessageStyles = css`
 describe('media-time-below', () => {
   let fixture: MountedFeatureFixture
 
-  function readTimeAndPreviewRects(
-    timeSelector: string,
-    previewSelector: string,
-  ): { timeRect: DOMRect; previewRect: DOMRect } {
-    const timeElement = findRequiredElement(fixture.container, timeSelector)
+  function findMediaTimes(): Element[] {
+    return Array.from(fixture.container.querySelectorAll(siteSelectors.chatMessageMediaTime))
+  }
+
+  function readTimeAndPreviewRects(timeElement: Element): {
+    timeRect: DOMRect
+    previewRect: DOMRect
+  } {
     const bubble = timeElement.parentElement
     if (bubble === null) {
-      throw new Error(`У времени ${timeSelector} нет пузыря`)
+      throw new Error('У времени сообщения с медиа нет пузыря')
     }
     return {
       timeRect: timeElement.getBoundingClientRect(),
-      previewRect: findRequiredElement(bubble, previewSelector).getBoundingClientRect(),
+      previewRect: findRequiredElement(
+        bubble,
+        `${siteSelectors.chatMessagePicture}, ${siteSelectors.chatMessageVideo}`,
+      ).getBoundingClientRect(),
     }
   }
 
-  function expectTimeBelowPreview(timeSelector: string, previewSelector: string): void {
-    const { timeRect, previewRect } = readTimeAndPreviewRects(timeSelector, previewSelector)
-    expect(timeRect.height).toBeGreaterThan(0)
-    expect(timeRect.top).toBeGreaterThanOrEqual(previewRect.bottom)
+  function rectsIntersect(firstRect: DOMRect, secondRect: DOMRect): boolean {
+    return (
+      firstRect.left < secondRect.right &&
+      secondRect.left < firstRect.right &&
+      firstRect.top < secondRect.bottom &&
+      secondRect.top < firstRect.bottom
+    )
   }
 
-  function expectTimeOverPreview(timeSelector: string, previewSelector: string): void {
-    const { timeRect, previewRect } = readTimeAndPreviewRects(timeSelector, previewSelector)
-    expect(timeRect.top).toBeLessThan(previewRect.bottom)
-  }
-
-  function findTextMeta(): Element {
-    const textMeta = Array.from(
-      fixture.container.querySelectorAll(siteSelectors.chatMessageMeta),
-    ).find(
+  function findUntouchedMetas(): Element[] {
+    return Array.from(fixture.container.querySelectorAll(siteSelectors.chatMessageMeta)).filter(
       (candidate) =>
         candidate.parentElement?.matches(siteSelectors.chatMessageBubble) === true &&
         !candidate.matches(
-          `${siteSelectors.chatMessageImageTime}, ${siteSelectors.chatMessageVideoTime}`,
+          `${siteSelectors.chatMessageImageTime}, ${siteSelectors.chatMessageVideoTime}, ${siteSelectors.chatMessageMediaTime}`,
         ),
     )
-    if (textMeta === undefined) {
-      throw new Error('Время текстового сообщения не найдено')
-    }
-    return textMeta
   }
 
   beforeEach(() => {
@@ -110,12 +116,31 @@ describe('media-time-below', () => {
     fixture.unmount()
   })
 
-  it('выводит время картинки под превью без пересечения', () => {
-    expectTimeBelowPreview(siteSelectors.chatMessageImageTime, siteSelectors.chatMessagePicture)
+  it('находит время у каждого сообщения с картинкой или видео без подписи', () => {
+    expect(findMediaTimes()).toHaveLength(EXPECTED_MEDIA_TIME_COUNT)
+    expect(
+      fixture.container.querySelectorAll(siteSelectors.chatMessageImageTime).length,
+    ).toBeGreaterThan(0)
+    expect(
+      fixture.container.querySelectorAll(siteSelectors.chatMessageVideoTime).length,
+    ).toBeGreaterThan(0)
   })
 
-  it('выводит время видео под превью без пересечения', () => {
-    expectTimeBelowPreview(siteSelectors.chatMessageVideoTime, siteSelectors.chatMessageVideo)
+  it('выводит время каждой картинки и видео под превью без пересечения', () => {
+    for (const timeElement of findMediaTimes()) {
+      const { timeRect, previewRect } = readTimeAndPreviewRects(timeElement)
+      expect(timeRect.height).toBeGreaterThan(0)
+      expect(rectsIntersect(timeRect, previewRect)).toBe(false)
+      expect(timeRect.top).toBeGreaterThanOrEqual(previewRect.bottom)
+    }
+  })
+
+  it('возвращает значку статуса под картинкой обычный цвет вместо белого', () => {
+    const statusIcon = findRequiredElement(
+      fixture.container,
+      `${siteSelectors.chatMessageImageTime} ${siteSelectors.chatMessageMediaTimeLightIcon}`,
+    )
+    expect(getComputedStyle(statusIcon).color).toBe(STATUS_ICON_COLOR)
   })
 
   it('не трогает длительность внутри превью видео', () => {
@@ -126,16 +151,27 @@ describe('media-time-below', () => {
     expect(durationStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
   })
 
-  it('не меняет положение времени текстового сообщения', () => {
-    const textMetaStyle = getComputedStyle(findTextMeta())
-    expect(textMetaStyle.position).toBe('absolute')
-    expect(textMetaStyle.right).toBe('12px')
-    expect(textMetaStyle.bottom).toBe('8px')
+  it('не меняет положение времени текстовых сообщений и альбома с подписью', () => {
+    const untouchedMetas = findUntouchedMetas()
+    expect(untouchedMetas.length).toBeGreaterThan(0)
+    for (const metaElement of untouchedMetas) {
+      const metaStyle = getComputedStyle(metaElement)
+      expect(metaStyle.position).toBe('absolute')
+      expect(metaStyle.right).toBe('12px')
+      expect(metaStyle.bottom).toBe('8px')
+    }
   })
 
-  it('возвращает время поверх превью при отключении фичи', () => {
+  it('возвращает время поверх превью и белый значок при отключении фичи', () => {
     fixture.setEnabled(false)
-    expectTimeOverPreview(siteSelectors.chatMessageImageTime, siteSelectors.chatMessagePicture)
-    expectTimeOverPreview(siteSelectors.chatMessageVideoTime, siteSelectors.chatMessageVideo)
+    for (const timeElement of findMediaTimes()) {
+      const { timeRect, previewRect } = readTimeAndPreviewRects(timeElement)
+      expect(rectsIntersect(timeRect, previewRect)).toBe(true)
+    }
+    const statusIcon = findRequiredElement(
+      fixture.container,
+      `${siteSelectors.chatMessageImageTime} ${siteSelectors.chatMessageMediaTimeLightIcon}`,
+    )
+    expect(getComputedStyle(statusIcon).color).toBe(LIGHT_ICON_COLOR)
   })
 })

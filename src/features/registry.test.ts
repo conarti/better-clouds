@@ -46,7 +46,7 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
   {
     id: 'media-time-below',
     title: 'Время под картинками и видео',
-    description: 'Время и статус сообщения с картинкой или видео выводятся под превью',
+    description: 'Время и статус переносятся под картинку или видео, а не лежат поверх превью',
     defaultEnabled: false,
   },
   {
