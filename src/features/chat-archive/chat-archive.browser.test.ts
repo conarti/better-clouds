@@ -45,6 +45,8 @@ const ARCHIVED_ENTRY_INDEXES = [1, 4, 8]
 const ARCHIVE_TAB_TEXT = 'Архив'
 const AFTER_PSEUDO_ELEMENT = '::after'
 const NO_CONTENT_VALUE = 'none'
+/** Запас снизу, который список получает на время подгрузки (styles.ts) */
+const LOADING_MORE_PADDING_BOTTOM = '1px'
 
 const archiveViewAttributeName = createArchiveViewAttributeName(featureMeta.id)
 const loadingMoreAttributeName = createLoadingMoreAttributeName(featureMeta.id)
@@ -153,7 +155,7 @@ describe('chat-archive', () => {
     expect(archivedEntries.some(isWrapperHidden)).toBe(false)
   })
 
-  it('режим архива показывает только архивные, на время подгрузки скрытие снято', () => {
+  it('режим архива показывает только архивные, и во время подгрузки тоже', () => {
     mountChatList(ALL_CHATS_FIXTURE_FILE_NAME)
     const chatIds = assignSyntheticChatIds()
     const archivedChatIds = ARCHIVED_ENTRY_INDEXES.map((index) => chatIds[index] as string)
@@ -165,7 +167,13 @@ describe('chat-archive', () => {
     expect(otherEntries.every(isWrapperHidden)).toBe(true)
 
     setRootState(loadingMoreAttributeName, true)
-    expect(otherEntries.some(isWrapperHidden)).toBe(false)
+    expect(archivedEntries.some(isWrapperHidden)).toBe(false)
+    expect(otherEntries.every(isWrapperHidden)).toBe(true)
+    const chatList = findRequiredElement(fixture.container, siteSelectors.chatList)
+    expect(getComputedStyle(chatList).paddingBottom).toBe(LOADING_MORE_PADDING_BOTTOM)
+
+    setRootState(loadingMoreAttributeName, false)
+    expect(getComputedStyle(chatList).paddingBottom).not.toBe(LOADING_MORE_PADDING_BOTTOM)
   })
 
   it('пустой архив: в режиме архива скрыто всё, в обычном ничего', () => {

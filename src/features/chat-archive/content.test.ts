@@ -59,7 +59,7 @@ const MENTIONED_TAB_INDEX = 3
 const USER_TAG_TAB_INDEX = 4
 const SCROLLER_CONTENT_HEIGHT = 900
 const FRAME_MILLISECONDS = 20
-const LOAD_MORE_TIMEOUT_MILLISECONDS = 3000
+const LOAD_MORE_TIMEOUT_MILLISECONDS = 1000
 const INVALID_CHAT_ID = 'chat id with spaces'
 const OWNED_ELEMENT_SELECTOR = `[${FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME}]`
 
@@ -455,6 +455,7 @@ describe('chat-archive mount', () => {
 
   describe('«Загрузить ещё»', () => {
     let scrollTopValue = 0
+    let scrollTopWriteCount = 0
 
     function findLoadMoreButton(): HTMLElement | null {
       return document.querySelector(`${siteSelectors.chatList} > .${LOAD_MORE_BUTTON_CLASS_NAME}`)
@@ -463,6 +464,7 @@ describe('chat-archive mount', () => {
     /** happy-dom не считает раскладку: высота и прокрутка списка задаются вручную */
     function stubScroller(): void {
       scrollTopValue = 0
+      scrollTopWriteCount = 0
       const scroller = requireElement(siteSelectors.chatListScroller)
       Object.defineProperty(scroller, 'scrollHeight', {
         configurable: true,
@@ -473,6 +475,7 @@ describe('chat-archive mount', () => {
         get: () => scrollTopValue,
         set: (nextScrollTop: number) => {
           scrollTopValue = nextScrollTop
+          scrollTopWriteCount += 1
         },
       })
     }
@@ -489,6 +492,21 @@ describe('chat-archive mount', () => {
       }
       loadMoreButton.click()
       await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+    }
+
+    function clickLoadMore(): void {
+      findLoadMoreButton()?.click()
+    }
+
+    async function appendLoadedPage(): Promise<void> {
+      const chatList = requireElement(siteSelectors.chatList)
+      const loadedWrapper = (findChatEntries()[0] as Element).parentElement?.cloneNode(true)
+      chatList.append(loadedWrapper as Node)
+      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+    }
+
+    function isArchiveView(): boolean {
+      return document.documentElement.hasAttribute(ARCHIVE_VIEW_ATTRIBUTE_NAME)
     }
 
     function isLoadingMore(): boolean {
@@ -511,29 +529,63 @@ describe('chat-archive mount', () => {
       })
     })
 
-    it('клик снимает скрытие и прокручивает список вниз, новая страница возвращает режим', async () => {
+    it('клик прокручивает список вниз, режим архива не снимается, новая страница завершает подгрузку', async () => {
       await openArchiveViewAndLoadMore()
       expect(isLoadingMore()).toBe(true)
+      expect(isArchiveView()).toBe(true)
       expect(scrollTopValue).toBe(SCROLLER_CONTENT_HEIGHT)
 
-      const chatList = requireElement(siteSelectors.chatList)
-      const loadedWrapper = (findChatEntries()[0] as Element).parentElement?.cloneNode(true)
-      chatList.append(loadedWrapper as Node)
-      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+      await appendLoadedPage()
 
       expect(isLoadingMore()).toBe(false)
-      expect(scrollTopValue).toBe(0)
-      expect(document.documentElement.hasAttribute(ARCHIVE_VIEW_ATTRIBUTE_NAME)).toBe(true)
+      expect(isArchiveView()).toBe(true)
+      expect(scrollTopValue).toBe(SCROLLER_CONTENT_HEIGHT)
     })
 
-    it('без новой страницы режим возвращается по таймауту', async () => {
+    it('без новой страницы подгрузка завершается по таймауту, прокрутка не сбрасывается', async () => {
       await openArchiveViewAndLoadMore()
       await vi.advanceTimersByTimeAsync(LOAD_MORE_TIMEOUT_MILLISECONDS - 2 * FRAME_MILLISECONDS)
       expect(isLoadingMore()).toBe(true)
 
       await vi.advanceTimersByTimeAsync(2 * FRAME_MILLISECONDS)
       expect(isLoadingMore()).toBe(false)
-      expect(scrollTopValue).toBe(0)
+      expect(isArchiveView()).toBe(true)
+      expect(scrollTopValue).toBe(SCROLLER_CONTENT_HEIGHT)
+    })
+
+    it('повторные клики во время подгрузки ничего не делают', async () => {
+      await openArchiveViewAndLoadMore()
+      clickLoadMore()
+      clickLoadMore()
+      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+
+      expect(scrollTopWriteCount).toBe(1)
+      expect(isLoadingMore()).toBe(true)
+    })
+
+    it('таймер прошлой подгрузки не завершает следующую', async () => {
+      await openArchiveViewAndLoadMore()
+      await appendLoadedPage()
+      expect(isLoadingMore()).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(LOAD_MORE_TIMEOUT_MILLISECONDS / 2)
+      clickLoadMore()
+      expect(isLoadingMore()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(LOAD_MORE_TIMEOUT_MILLISECONDS / 2)
+      expect(isLoadingMore()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(LOAD_MORE_TIMEOUT_MILLISECONDS / 2)
+      expect(isLoadingMore()).toBe(false)
+      expect(isArchiveView()).toBe(true)
+    })
+
+    it('выход из режима архива завершает подгрузку', async () => {
+      await openArchiveViewAndLoadMore()
+      ;(requireElement(siteSelectors.chatListAllChatsTabButton) as HTMLElement).click()
+
+      expect(isArchiveView()).toBe(false)
+      expect(isLoadingMore()).toBe(false)
     })
   })
 

@@ -35,7 +35,6 @@ const STYLE_TAG_NAME = 'style'
 const LOAD_MORE_TEXT = 'Загрузить ещё'
 const CONTEXT_MENU_EVENT_NAME = 'contextmenu'
 const CLICK_EVENT_NAME = 'click'
-const TOP_SCROLL_POSITION = 0
 
 /**
  * Контейнеры клиента появляются после загрузки и пересоздаются при смене экрана, поэтому они
@@ -43,8 +42,11 @@ const TOP_SCROLL_POSITION = 0
  */
 const CONTAINER_CHECK_INTERVAL_MILLISECONDS = 1000
 
-/** Сколько ждать подгрузки страницы записей, прежде чем вернуть режим архива */
-const LOAD_MORE_TIMEOUT_MILLISECONDS = 3000
+/**
+ * Сколько ждать новой страницы записей, прежде чем снять запас высоты списка. Список виден
+ * как обычно, поэтому таймаут нужен только для конца списка, где клиенту нечего подгружать
+ */
+const LOAD_MORE_TIMEOUT_MILLISECONDS = 1000
 
 const TABS_LIST_MUTATION_OPTIONS: MutationObserverInit = {
   childList: true,
@@ -76,6 +78,11 @@ const CHAT_TABS_ACTIVE_SELECTOR = [
   siteSelectors.chatListAllChatsTabActive,
   siteSelectors.chatListUserTagTabActive,
 ].join(', ')
+
+/** Одна подгрузка по кнопке: таймер старой подгрузки не должен завершать новую */
+interface LoadMoreRequest {
+  readonly entryCountBefore: number
+}
 
 interface WatchedContainer {
   readonly current: () => Element | null
@@ -134,7 +141,7 @@ export default defineFeatureContent({
     let archivedChatIds: readonly string[] = []
     let contextMenuChatId: string | null = null
     let menuErrorText: string | null = null
-    let entryCountBeforeLoading: number | null = null
+    let loadMoreRequest: LoadMoreRequest | null = null
 
     const styleElement = markOwnedElement(documentRoot.createElement(STYLE_TAG_NAME), featureId)
     const archiveTab = createArchiveTab(documentRoot, featureId)
@@ -161,34 +168,36 @@ export default defineFeatureContent({
       return chatListContainer.current()?.querySelectorAll(siteSelectors.chatListEntry).length ?? 0
     }
 
+    /**
+     * Позиция прокрутки не трогается: прокрутка в самый верх у клиента сбрасывает список к
+     * первой странице. Если без запаса список не прокручивается, браузер сам вернёт его наверх,
+     * клиент сбросит страницы и тут же догрузит их, пока список не станет прокручиваемым
+     */
     function finishLoadingMore(): void {
-      if (entryCountBeforeLoading === null) {
-        return
-      }
-      entryCountBeforeLoading = null
+      loadMoreRequest = null
       rootElement.removeAttribute(loadingMoreAttributeName)
-      const scroller = documentRoot.querySelector(siteSelectors.chatListScroller)
-      if (scroller !== null) {
-        scroller.scrollTop = TOP_SCROLL_POSITION
-      }
     }
 
     /**
      * Клиент подгружает записи только прокруткой до конца, а в режиме архива почти все записи
-     * скрыты и прокручивать нечего. Скрытие снимается на время подгрузки, список прокручивается
-     * до конца, и после новой страницы (или по таймауту) режим архива возвращается
+     * скрыты и прокручивать нечего (gate G3). Скрытие не снимается: признак подгрузки даёт
+     * списку запас высоты, список прокручивается до конца, и после новой страницы (или по
+     * таймауту) запас убирается. Повторный клик во время подгрузки ничего не делает
      */
     function loadMoreEntries(): void {
       const scroller = documentRoot.querySelector(siteSelectors.chatListScroller)
-      if (scroller === null || entryCountBeforeLoading !== null) {
+      if (scroller === null || loadMoreRequest !== null || !isArchiveView()) {
         return
       }
-      entryCountBeforeLoading = countChatListEntries()
+      const request: LoadMoreRequest = { entryCountBefore: countChatListEntries() }
+      loadMoreRequest = request
       rootElement.setAttribute(loadingMoreAttributeName, STATE_ATTRIBUTE_VALUE)
-      lifecycle.requestAnimationFrame(() => {
-        scroller.scrollTop = scroller.scrollHeight
-      })
-      lifecycle.setTimeout(finishLoadingMore, LOAD_MORE_TIMEOUT_MILLISECONDS)
+      scroller.scrollTop = scroller.scrollHeight
+      lifecycle.setTimeout(() => {
+        if (loadMoreRequest === request) {
+          finishLoadingMore()
+        }
+      }, LOAD_MORE_TIMEOUT_MILLISECONDS)
     }
 
     function refreshChatList(): void {
@@ -203,7 +212,7 @@ export default defineFeatureContent({
       } else {
         loadMoreButton.remove()
       }
-      if (entryCountBeforeLoading !== null && countChatListEntries() > entryCountBeforeLoading) {
+      if (loadMoreRequest !== null && countChatListEntries() > loadMoreRequest.entryCountBefore) {
         finishLoadingMore()
       }
     }

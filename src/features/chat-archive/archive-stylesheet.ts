@@ -18,8 +18,9 @@ export function createArchiveViewAttributeName(featureId: string): string {
 }
 
 /**
- * Признак на корне: идёт подгрузка следующей страницы в режиме архива. Скрытие на это время
- * снимается, иначе список не прокручивается и клиент не подгружает записи (gate G3)
+ * Признак на корне: идёт подгрузка следующей страницы в режиме архива. Скрытие при этом не
+ * снимается: список на время подгрузки чуть выше окна, чтобы его можно было прокрутить до
+ * конца (styles.ts)
  */
 export function createLoadingMoreAttributeName(featureId: string): string {
   return createFeatureStateAttributeName(featureId, LOADING_MORE_STATE_NAME)
@@ -42,14 +43,13 @@ export function buildArchiveStylesheet(
 ): string {
   const featureScope = createFeatureScopeSelector(featureId)
   const archiveView = `[${createArchiveViewAttributeName(featureId)}]`
-  const loadingMore = `[${createLoadingMoreAttributeName(featureId)}]`
   const emptySearch = `:has(${siteSelectors.chatListSearchInputEmpty})`
   const chatListWrappers = `${siteSelectors.chatList} ${siteSelectors.chatListItemWrapper}`
   const allChatsTabActive = `:has(${siteSelectors.chatListAllChatsTabActive})`
 
   if (archivedChatIds.length === 0) {
     return css`
-      ${featureScope}${archiveView}:not(${loadingMore})${emptySearch} ${chatListWrappers} {
+      ${featureScope}${archiveView}${emptySearch} ${chatListWrappers} {
         display: none;
       }
     `
@@ -63,7 +63,7 @@ export function buildArchiveStylesheet(
     ${featureScope}:not(${archiveView})${emptySearch} ${chatListWrappers}:has(${archivedEntries}) {
       display: none;
     }
-    ${featureScope}${archiveView}:not(${loadingMore})${emptySearch} ${chatListWrappers}:not(:has(${archivedEntries})) {
+    ${featureScope}${archiveView}${emptySearch} ${chatListWrappers}:not(:has(${archivedEntries})) {
       display: none;
     }
     ${featureScope}${archiveView}${allChatsTabActive}${emptySearch} ${chatListWrappers}:has(${archivedEntries}) {
