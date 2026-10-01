@@ -55,10 +55,21 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     description: 'Выбранные теги стоят в списке вкладок перед вкладкой «Все чаты»',
     defaultEnabled: false,
   },
+  {
+    id: 'thread-mentions-first',
+    title: 'Треды с упоминаниями наверх',
+    description:
+      'На вкладке «Обсуждения» треды с упоминанием идут первыми и отмечены полосой слева',
+    defaultEnabled: false,
+  },
 ]
 
 /** Функции, которые меняют привычный вид клиента и поэтому выключены по умолчанию */
-const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = ['media-time-below', 'tag-tabs-first']
+const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = [
+  'media-time-below',
+  'tag-tabs-first',
+  'thread-mentions-first',
+]
 
 const HAS_PSEUDO_CLASS = ':has('
 const FEATURE_DIRECTORY_PATTERN = /^\.\/([^/]+)\//

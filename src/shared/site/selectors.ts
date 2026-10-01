@@ -86,6 +86,14 @@ export const siteSelectors = {
   chatListAllChatsTabActive:
     '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:first-child > .tab--selected',
   /**
+   * Активная вкладка «Обсуждения» (треды). Идентификатор вкладки в разметку не выводится,
+   * поэтому вкладка определяется позицией: третья из четырёх системных. Теги идут после
+   * системных, а tag-tabs-first двигает их только CSS order, поэтому позиция в DOM не меняется
+   * (разведка живой страницы v3.72.37)
+   */
+  chatListThreadsTabActive:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:nth-child(3) > .tab--selected',
+  /**
    * Обёртка вкладки в списке вкладок, прямой ребёнок списка. У обёртки display: contents,
    * поэтому элементом flex-списка выступает кнопка внутри неё (разведка живой страницы v3.72.37)
    */
@@ -119,6 +127,19 @@ export const siteSelectors = {
    * В свёрнутом режиме списка модификатор не выводится, поэтому скрытие там не действует
    */
   chatListEntryCatalogInfo: '.chat-list-entry__info--catalog',
+  /**
+   * Признак упоминания в записи треда: клиент рисует счётчик упоминаний (`@` или `@N`) тем же
+   * классом .chat-list-entry-counter сразу перед счётчиком непрочитанных, а счётчик
+   * непрочитанных при упоминании есть всегда. Поэтому признак это пара соседних счётчиков в
+   * блоке meta записи треда; селектор выбирает второй из пары. Модификатор --min есть только
+   * при одном упоминании, поэтому на него и на текст `@` признак не опирается
+   * (код клиента v3.72.37, живого треда с упоминанием при разведке не было)
+   */
+  threadListEntryMentionCounterPair:
+    '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter + .chat-list-entry-counter',
+  /** Счётчик в блоке meta записи треда: непрочитанные или упоминания */
+  threadListEntryCounter:
+    '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter',
   /**
    * Область закреплённых чатов с перетаскиванием. Нужен браузерному тесту hide-catalog-bots:
    * им тест считает закреплённые записи
@@ -238,7 +259,7 @@ export const siteAttributeNames = {
  * содержат значение текущей темы, поэтому вариантов под каждую тему не требуется
  */
 export const siteCustomPropertyNames = {
-  /** Цвет точки непрочитанных у спрятанной колонки */
+  /** Акцентный цвет клиента: точка непрочитанных у спрятанной колонки, полоса тредов с упоминанием */
   buttonPrimary: '--button-primary',
   /**
    * Отступ сверху центральной колонки: сайт вычитает его же из высоты .layout-pane__body
