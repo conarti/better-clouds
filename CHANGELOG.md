@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0](https://github.com/conarti/better-clouds/compare/v0.1.0...v0.2.0) (2026-10-01)
+
+
+### Возможности
+
+* плавно проявлять точку непрочитанных в колонке навигации ([7973579](https://github.com/conarti/better-clouds/commit/79735798c3ec1af72252eeef40127e09ee2a1135))
+* сгладить анимацию раскрытия колонки навигации ([72031e2](https://github.com/conarti/better-clouds/commit/72031e2d7e552ef58cb7c807dad389a3d55a2246))
+* скрытие колокольчика, время под медиа, теги, треды с упоминаниями и архив чатов ([#3](https://github.com/conarti/better-clouds/issues/3)) ([30fff6e](https://github.com/conarti/better-clouds/commit/30fff6e864a234d6f1feba7a9131493e10cc8c80))
+* убрать пометку о неофициальности из шапки попапа ([5ec0d64](https://github.com/conarti/better-clouds/commit/5ec0d64662c2b7e603c26c8a7ba538b413747d20))
+
 ## 0.1.0 (2026-09-26)
 
 
