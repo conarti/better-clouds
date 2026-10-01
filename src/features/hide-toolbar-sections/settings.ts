@@ -27,17 +27,12 @@ export const TOOLBAR_SECTIONS: readonly ToolbarSectionDefinition[] = [
 export const TOOLBAR_SECTION_IDS: readonly string[] = TOOLBAR_SECTIONS.map((section) => section.id)
 
 /**
- * Скрытые секции нового профиля: шесть исходных секций. Колокольчик и его счётчик
+ * Скрытые секции нового профиля: все, кроме колокольчика и его счётчика. Колокольчик и его счётчик
  * по умолчанию видны, как и у профилей, сохранённых до их появления
  */
-export const DEFAULT_HIDDEN_SECTION_IDS: readonly string[] = [
-  'main',
-  'chats',
-  'contacts',
-  'calls',
-  'smartapps',
-  'smartapps-block',
-]
+export const DEFAULT_HIDDEN_SECTION_IDS: readonly string[] = TOOLBAR_SECTION_IDS.filter(
+  (sectionId) => sectionId !== BELL_COUNTER_SECTION_ID && sectionId !== BELL_SECTION_ID,
+)
 
 const KNOWN_SECTION_ID_SET = new Set<string>(TOOLBAR_SECTION_IDS)
 

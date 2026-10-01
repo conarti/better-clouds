@@ -3,6 +3,7 @@ import {
   createFeatureScopeSelector,
   FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME,
 } from '@/shared/feature/feature-scope'
+import { OWNED_ELEMENT_MARKER_SEPARATOR } from '@/shared/feature/injected-elements'
 import { siteCustomPropertyNames, siteSelectors } from '@/shared/site/selectors'
 import { createArchiveViewAttributeName } from './archive-stylesheet'
 import featureMeta from './meta'
@@ -10,7 +11,7 @@ import featureMeta from './meta'
 const featureScope = createFeatureScopeSelector(featureMeta.id)
 const archiveView = `[${createArchiveViewAttributeName(featureMeta.id)}]`
 
-const ownedElement = `[${FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME}^="${featureMeta.id}:"]`
+const ownedElement = `[${FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME}^="${featureMeta.id}${OWNED_ELEMENT_MARKER_SEPARATOR}"]`
 
 /** Высота иконки в пунктах меню клиента: без иконки свой пункт был бы на 2px ниже */
 const MENU_ITEM_ICON_HEIGHT = '20px'

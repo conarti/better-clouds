@@ -9,7 +9,7 @@ import {
  * Обнаруженное на странице это снимок устройства, а не настройка: он лежит в storage.local
  * отдельным элементом и не тратит квоту sync
  */
-export const DISCOVERED_VALUES_KEY_PREFIX = 'local:feature.'
+const DISCOVERED_VALUES_KEY_PREFIX = 'local:feature.'
 
 const DISCOVERED_VALUES_KEY_SUFFIX = '.discovered'
 

@@ -4,6 +4,7 @@ import {
   isOwnElement,
   markOwnedElement,
   removeOwnElements,
+  type InjectedElementKeeper,
 } from '@/shared/feature/injected-elements'
 import type { FeatureLifecycle } from '@/shared/feature/feature-types'
 import { logger } from '@/shared/logging/logger'
@@ -145,24 +146,12 @@ export default defineFeatureContent({
     loadMoreButton.className = LOAD_MORE_BUTTON_CLASS_NAME
     loadMoreButton.textContent = LOAD_MORE_TEXT
 
-    const tabKeeper = createInjectedElementKeeper({
-      featureId,
-      element: archiveTab.element,
-      lifecycle,
-      logger,
-    })
-    const menuItemKeeper = createInjectedElementKeeper({
-      featureId,
-      element: menuItem.element,
-      lifecycle,
-      logger,
-    })
-    const loadMoreKeeper = createInjectedElementKeeper({
-      featureId,
-      element: loadMoreButton,
-      lifecycle,
-      logger,
-    })
+    function createKeeper(element: Element): InjectedElementKeeper {
+      return createInjectedElementKeeper({ featureId, element, lifecycle, logger })
+    }
+    const tabKeeper = createKeeper(archiveTab.element)
+    const menuItemKeeper = createKeeper(menuItem.element)
+    const loadMoreKeeper = createKeeper(loadMoreButton)
 
     function isArchiveView(): boolean {
       return rootElement.hasAttribute(archiveViewAttributeName)

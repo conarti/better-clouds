@@ -12,6 +12,8 @@ const featureScope = createFeatureScopeSelector(featureMeta.id)
  */
 const threadsTabCondition = `${featureScope}:has(${siteSelectors.chatListThreadsTabActive}):has(${siteSelectors.chatListSearchInputEmpty})`
 
+const chatListWithMentionedThread = `${siteSelectors.chatList}:has(> ${siteSelectors.chatListItemWrapper} > ${siteSelectors.chatListEntry} ${siteSelectors.threadListEntryMentionCounterPair})`
+
 /**
  * Контейнер клиента это блок без виртуализации, записи в обычном потоке (разведка v3.72.37,
  * gate G2). Колонка flex нужна только ради order, поэтому она ставится лишь когда в списке
@@ -24,19 +26,11 @@ const threadsTabCondition = `${featureScope}:has(${siteSelectors.chatListThreads
  * одинаковых полях сверху и снизу записи стоят ровно там же, где у клиента (живая проверка v3.72.37).
  */
 export const featureStyles = css`
-  ${threadsTabCondition} ${siteSelectors.chatList}:has(
-      > ${siteSelectors.chatListItemWrapper}
-        > ${siteSelectors.chatListEntry}
-        ${siteSelectors.threadListEntryMentionCounterPair}
-    ) {
+  ${threadsTabCondition} ${chatListWithMentionedThread} {
     display: flex;
     flex-direction: column;
   }
-  ${threadsTabCondition} ${siteSelectors.chatList}:has(
-      > ${siteSelectors.chatListItemWrapper}
-        > ${siteSelectors.chatListEntry}
-        ${siteSelectors.threadListEntryMentionCounterPair}
-    )
+  ${threadsTabCondition} ${chatListWithMentionedThread}
     > ${siteSelectors.chatListItemWrapper}
     > ${siteSelectors.chatListEntry} {
     margin-bottom: 0;
