@@ -59,7 +59,7 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     id: 'thread-mentions-first',
     title: 'Треды с упоминаниями наверх',
     description:
-      'На вкладке «Обсуждения» треды с упоминанием идут первыми и отмечены полосой слева',
+      'На вкладке «Обсуждения» треды с непрочитанным упоминанием идут первыми и отмечены полосой слева',
     defaultEnabled: false,
   },
   {
