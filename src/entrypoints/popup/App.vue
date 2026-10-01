@@ -11,6 +11,7 @@ const {
   enabledByFeatureId,
   isLoaded,
   storedValuesByFeatureId,
+  discoveredValuesByFeatureId,
   setFeatureEnabled,
   setFeatureOptions,
 } = useFeatureSettings()
@@ -26,9 +27,11 @@ function handleHiddenSectionsChange(featureId: string, sectionIds: string[]): vo
     <FeatureSettingsList
       :enabled-by-feature-id="enabledByFeatureId"
       :stored-values-by-feature-id="storedValuesByFeatureId"
+      :discovered-values-by-feature-id="discoveredValuesByFeatureId"
       :is-loaded="isLoaded"
       @update:enabled="setFeatureEnabled"
       @update:hidden="handleHiddenSectionsChange"
+      @update:options="setFeatureOptions"
     />
     <p class="popup__footer">{{ FOOTER_TEXT }}</p>
   </main>

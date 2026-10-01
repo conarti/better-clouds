@@ -1,8 +1,13 @@
 import { onScopeDispose, readonly, ref, type DeepReadonly, type Ref } from 'vue'
 import { featureMetaRegistry } from '@/features/registry'
 import { featureSettingsRegistry } from '@/features/settings-registry'
-import type { FeatureMeta } from '@/shared/feature/feature-types'
+import { DISCOVERED_VALUES_SOURCE, type FeatureMeta } from '@/shared/feature/feature-types'
 import { logger } from '@/shared/logging/logger'
+import {
+  createDiscoveredValuesItem,
+  readDiscoveredValues,
+  type DiscoveredValues,
+} from '@/shared/settings/discovered-values'
 import {
   createFeatureSettingsSource,
   readEnabledFlag,
@@ -11,6 +16,7 @@ import {
 } from '@/shared/settings/feature-settings'
 
 const SETTINGS_WRITE_FAILURE_MESSAGE = 'Не удалось сохранить настройку функции'
+const DISCOVERED_READ_FAILURE_MESSAGE = 'Не удалось прочитать обнаруженные значения функции'
 
 export interface FeatureSettingsState {
   readonly enabledByFeatureId: DeepReadonly<Ref<Record<string, boolean>>>
@@ -19,6 +25,12 @@ export interface FeatureSettingsState {
    * слоя, интерпретирует их только владелец схемы (settings.ts функции)
    */
   readonly storedValuesByFeatureId: DeepReadonly<Ref<Record<string, FeatureSettingsStoredValue>>>
+  /**
+   * Последние снимки значений, обнаруженных content script на странице, для функций с опцией
+   * из обнаруженного. Снимок живёт в storage.local, поэтому попап показывает его и без
+   * открытой вкладки Клаудс
+   */
+  readonly discoveredValuesByFeatureId: DeepReadonly<Ref<Record<string, DiscoveredValues>>>
   readonly isLoaded: Readonly<Ref<boolean>>
   setFeatureEnabled(featureId: string, isEnabled: boolean): Promise<void>
   setFeatureOptions(featureId: string, options: FeatureSettingsOptions): Promise<void>
@@ -48,8 +60,40 @@ export function useFeatureSettings(
     ),
   )
   const isLoaded = ref(false)
+  const discoveredValuesByFeatureId = ref<Record<string, DiscoveredValues>>({})
 
   const knownFeatureIds = new Set<string>()
+
+  const discoveringFeatureMetas = featureMetas.filter((featureMeta) =>
+    featureSettingsRegistry
+      .get(featureMeta.id)
+      ?.popupOptions?.some((popupOption) => popupOption.source === DISCOVERED_VALUES_SOURCE),
+  )
+
+  function setDiscoveredValues(featureId: string, storedValue: unknown): void {
+    discoveredValuesByFeatureId.value = {
+      ...discoveredValuesByFeatureId.value,
+      [featureId]: readDiscoveredValues(storedValue),
+    }
+  }
+
+  const unwatchDiscoveredCallbacks = discoveringFeatureMetas.map((featureMeta) => {
+    const discoveredValuesItem = createDiscoveredValuesItem(featureMeta)
+    discoveredValuesItem
+      .getValue()
+      .then((storedValue) => {
+        /* Снимок из наблюдения свежее прочитанного */
+        if (!(featureMeta.id in discoveredValuesByFeatureId.value)) {
+          setDiscoveredValues(featureMeta.id, storedValue)
+        }
+      })
+      .catch((readError: unknown) => {
+        logger.warn(DISCOVERED_READ_FAILURE_MESSAGE, featureMeta.id, readError)
+      })
+    return discoveredValuesItem.watch((storedValue) => {
+      setDiscoveredValues(featureMeta.id, storedValue)
+    })
+  })
 
   const unwatchCallbacks = featureMetas.map((featureMeta) =>
     settingsSource.watchValue(featureMeta, (storedValue) => {
@@ -66,7 +110,7 @@ export function useFeatureSettings(
   )
 
   onScopeDispose(() => {
-    for (const unwatch of unwatchCallbacks) {
+    for (const unwatch of [...unwatchCallbacks, ...unwatchDiscoveredCallbacks]) {
       unwatch()
     }
   })
@@ -120,7 +164,7 @@ export function useFeatureSettings(
   }
 
   /**
-   * Тумблеры секций меняются сразу, чтобы не ждать хранилища; флаг enabled не трогается,
+   * Тумблеры секций и опций меняются сразу, чтобы не ждать хранилища; флаг enabled не трогается,
    * общий слой слияет патч с актуальным значением
    */
   async function setFeatureOptions(
@@ -156,6 +200,7 @@ export function useFeatureSettings(
   return {
     enabledByFeatureId: readonly(enabledByFeatureId),
     storedValuesByFeatureId: readonly(storedValuesByFeatureId),
+    discoveredValuesByFeatureId: readonly(discoveredValuesByFeatureId),
     isLoaded: readonly(isLoaded),
     setFeatureEnabled,
     setFeatureOptions,

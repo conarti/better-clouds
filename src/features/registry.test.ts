@@ -49,10 +49,16 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     description: 'Время и статус сообщения с картинкой или видео выводятся под превью',
     defaultEnabled: false,
   },
+  {
+    id: 'tag-tabs-first',
+    title: 'Теги перед «Все чаты»',
+    description: 'Выбранные теги стоят в списке вкладок перед вкладкой «Все чаты»',
+    defaultEnabled: false,
+  },
 ]
 
 /** Функции, которые меняют привычный вид клиента и поэтому выключены по умолчанию */
-const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = ['media-time-below']
+const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = ['media-time-below', 'tag-tabs-first']
 
 const HAS_PSEUDO_CLASS = ':has('
 const FEATURE_DIRECTORY_PATTERN = /^\.\/([^/]+)\//

@@ -5,6 +5,7 @@ import hideCatalogBotsMeta from './hide-catalog-bots/meta'
 import compactModeMeta from './compact-mode/meta'
 import hideToolbarSectionsMeta from './hide-toolbar-sections/meta'
 import mediaTimeBelowMeta from './media-time-below/meta'
+import tagTabsFirstMeta from './tag-tabs-first/meta'
 
 /**
  * Порядок строк задаёт порядок тумблеров в попапе. Новая функция это папка в src/features
@@ -17,6 +18,7 @@ export const featureMetaRegistry = [
   compactModeMeta,
   hideToolbarSectionsMeta,
   mediaTimeBelowMeta,
+  tagTabsFirstMeta,
 ] as const satisfies readonly FeatureMeta[]
 
 export type FeatureId = (typeof featureMetaRegistry)[number]['id']

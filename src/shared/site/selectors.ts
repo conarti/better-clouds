@@ -86,6 +86,18 @@ export const siteSelectors = {
   chatListAllChatsTabActive:
     '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:first-child > .tab--selected',
   /**
+   * Обёртка вкладки в списке вкладок, прямой ребёнок списка. У обёртки display: contents,
+   * поэтому элементом flex-списка выступает кнопка внутри неё (разведка живой страницы v3.72.37)
+   */
+  chatListTabWrapper: '.react-contextmenu-wrapper',
+  /**
+   * Кнопка вкладки внутри обёртки. Подчёркивание выбранной вкладки это её ::after с
+   * position: absolute, поэтому оно едет вместе с кнопкой (разведка живой страницы v3.72.37)
+   */
+  chatListTabButton: 'button.tab',
+  /** Подпись вкладки внутри кнопки: имя системной вкладки или пользовательского тега */
+  chatListTabLabel: 'button.tab > span',
+  /**
    * Поле поиска над списком чатов: редактор Slate, а не input. Нужен браузерному тесту
    * hide-catalog-bots: им тест имитирует ввод в поиск
    */
@@ -211,6 +223,8 @@ export const siteSelectors = {
 export const siteClassNames = {
   /** Модификатор непустого поля поиска: редактор Slate не хранит значение в атрибуте */
   chatListSearchInputValue: 'search-filter-panel-input__editor--value',
+  /** Модификатор выбранной вкладки списка: им browser-тест выбирает вкладку тега */
+  chatListTabSelected: 'tab--selected',
 } as const
 
 /** Имена атрибутов сайта, которые не начинаются с data- */

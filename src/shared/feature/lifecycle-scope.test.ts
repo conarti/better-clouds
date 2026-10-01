@@ -5,6 +5,8 @@ const TIMEOUT_DELAY_MILLISECONDS = 100
 const INTERVAL_DELAY_MILLISECONDS = 50
 const ANIMATION_FRAME_DELAY_MILLISECONDS = 20
 const CLICK_EVENT_NAME = 'click'
+const OBSERVED_ELEMENT_TAG_NAME = 'div'
+const CHILD_LIST_OPTIONS: MutationObserverInit = { childList: true }
 
 const FAKE_TIMER_METHODS = [
   'setTimeout',
@@ -112,5 +114,114 @@ describe('createLifecycleScope', () => {
     expect(() => {
       scope.dispose()
     }).not.toThrow()
+  })
+
+  describe('observeMutations', () => {
+    let observedElement: HTMLElement
+
+    beforeEach(() => {
+      /* Шпионы кадров из тестов выше подменяют поддельный requestAnimationFrame */
+      vi.restoreAllMocks()
+      vi.useFakeTimers({ toFake: [...FAKE_TIMER_METHODS] })
+      observedElement = document.createElement(OBSERVED_ELEMENT_TAG_NAME)
+      document.body.append(observedElement)
+    })
+
+    afterEach(() => {
+      observedElement.remove()
+    })
+
+    async function appendChildAndFlush(): Promise<void> {
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      vi.advanceTimersByTime(ANIMATION_FRAME_DELAY_MILLISECONDS)
+    }
+
+    it('сводит изменения одного кадра к одному вызову', async () => {
+      const scope = createLifecycleScope()
+      const callback = vi.fn()
+
+      scope.lifecycle.observeMutations(observedElement, callback, CHILD_LIST_OPTIONS)
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      expect(callback).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(ANIMATION_FRAME_DELAY_MILLISECONDS)
+
+      expect(callback).toHaveBeenCalledTimes(1)
+      await appendChildAndFlush()
+      expect(callback).toHaveBeenCalledTimes(2)
+      scope.dispose()
+    })
+
+    it('отключается при dispose, включая запланированный кадр', async () => {
+      const scope = createLifecycleScope()
+      const callback = vi.fn()
+
+      scope.lifecycle.observeMutations(observedElement, callback, CHILD_LIST_OPTIONS)
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      scope.dispose()
+      vi.advanceTimersByTime(ANIMATION_FRAME_DELAY_MILLISECONDS)
+      await appendChildAndFlush()
+
+      expect(callback).not.toHaveBeenCalled()
+    })
+
+    it('отключается возвращённой функцией, остальные наблюдатели работают', async () => {
+      const scope = createLifecycleScope()
+      const disconnectedCallback = vi.fn()
+      const activeCallback = vi.fn()
+
+      const disconnect = scope.lifecycle.observeMutations(
+        observedElement,
+        disconnectedCallback,
+        CHILD_LIST_OPTIONS,
+      )
+      scope.lifecycle.observeMutations(observedElement, activeCallback, CHILD_LIST_OPTIONS)
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      disconnect()
+      vi.advanceTimersByTime(ANIMATION_FRAME_DELAY_MILLISECONDS)
+
+      expect(disconnectedCallback).not.toHaveBeenCalled()
+      expect(activeCallback).toHaveBeenCalledTimes(1)
+      scope.dispose()
+    })
+
+    it('после dispose не наблюдает и отдаёт безопасное отключение', async () => {
+      const scope = createLifecycleScope()
+      const callback = vi.fn()
+
+      scope.dispose()
+      const disconnect = scope.lifecycle.observeMutations(
+        observedElement,
+        callback,
+        CHILD_LIST_OPTIONS,
+      )
+      await appendChildAndFlush()
+
+      expect(callback).not.toHaveBeenCalled()
+      expect(() => {
+        disconnect()
+      }).not.toThrow()
+    })
+
+    it('новая область после dispose прежней наблюдает заново', async () => {
+      const firstScope = createLifecycleScope()
+      const firstCallback = vi.fn()
+      firstScope.lifecycle.observeMutations(observedElement, firstCallback, CHILD_LIST_OPTIONS)
+      firstScope.dispose()
+
+      const secondScope = createLifecycleScope()
+      const secondCallback = vi.fn()
+      secondScope.lifecycle.observeMutations(observedElement, secondCallback, CHILD_LIST_OPTIONS)
+      await appendChildAndFlush()
+
+      expect(firstCallback).not.toHaveBeenCalled()
+      expect(secondCallback).toHaveBeenCalledTimes(1)
+      secondScope.dispose()
+    })
   })
 })

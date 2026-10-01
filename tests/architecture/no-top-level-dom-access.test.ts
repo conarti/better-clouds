@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest'
  * Верхний уровень модулей функций и content script не обращается к document, window и browser:
  * WXT импортирует entrypoint в Node при сборке, а eager glob выполняет верхний уровень всех
  * content.ts и styles.ts. Сборка такое обращение не ловит, поэтому правило проверяется разбором
- * исходников: обращения допустимы только внутри тел функций (main, mount и прочие).
+ * исходников: обращения допустимы только внутри тел функций (main, mount и прочие). Проверяются
+ * все модули папок функций, кроме тестов, а не только файлы контракта: вспомогательные модули
+ * импортируются из content.ts и выполняются вместе с ним.
  */
 
 const FORBIDDEN_GLOBAL_NAMES = ['document', 'window', 'browser']
@@ -14,14 +16,13 @@ const LINE_NUMBER_OFFSET = 1
 const CONTENT_SCRIPT_MODULE_PATH = '../../src/entrypoints/content.ts'
 const FEATURE_MODULE_FILE_NAMES = ['content.ts', 'meta.ts', 'styles.ts']
 const FEATURE_DIRECTORY_PATTERN = /src\/features\/([^/]+)\//
+const TEST_MODULE_SUFFIX = '.test.ts'
 
 const checkedSourceModules = import.meta.glob<string>(
   [
     '../../src/entrypoints/content.ts',
-    '../../src/features/*/content.ts',
-    '../../src/features/*/meta.ts',
-    '../../src/features/*/settings.ts',
-    '../../src/features/*/styles.ts',
+    '../../src/features/*/*.ts',
+    '!../../src/features/*/*.test.ts',
   ],
   { query: '?raw', import: 'default', eager: true },
 )
@@ -139,6 +140,9 @@ describe('верхний уровень модулей функций', () => {
         )
       }
     }
+    expect(
+      checkedModulePaths.filter((modulePath) => modulePath.endsWith(TEST_MODULE_SUFFIX)),
+    ).toEqual([])
   })
 
   it('не обращается к document, window и browser', () => {

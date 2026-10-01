@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeBrowser } from 'wxt/testing/fake-browser'
 import { useFeatureSettings, type FeatureSettingsState } from './useFeatureSettings'
 import type { FeatureMeta } from '@/shared/feature/feature-types'
+import tagTabsFirstMeta from '@/features/tag-tabs-first/meta'
 
 const STUB_FEATURE_META: FeatureMeta = {
   id: 'stub-feature',
@@ -86,6 +87,81 @@ describe('useFeatureSettings', () => {
 
       await vi.waitFor(() => {
         expect(featureSettings.enabledByFeatureId.value[STUB_FEATURE_META.id]).toBe(false)
+      })
+    })
+  })
+
+  describe('обнаруженные значения', () => {
+    const DISCOVERED_STORAGE_KEY = `feature.${tagTabsFirstMeta.id}.discovered`
+    const FIRST_TAG_NAME = 'Работа'
+    const SECOND_TAG_NAME = 'Семья'
+
+    async function withDiscoveringFeature(
+      assertion: (featureSettings: FeatureSettingsState) => Promise<void>,
+    ): Promise<void> {
+      const scope = effectScope()
+      const featureSettings = scope.run(() => useFeatureSettings([tagTabsFirstMeta]))
+      if (featureSettings === undefined) {
+        throw new Error('Не удалось создать состояние настроек')
+      }
+      try {
+        await assertion(featureSettings)
+      } finally {
+        scope.stop()
+      }
+    }
+
+    it('читает последний снимок из storage.local и следит за ним', async () => {
+      await fakeBrowser.storage.local.set({
+        [DISCOVERED_STORAGE_KEY]: { values: [FIRST_TAG_NAME], isTruncated: false },
+      })
+
+      await withDiscoveringFeature(async (featureSettings) => {
+        await vi.waitFor(() => {
+          expect(featureSettings.discoveredValuesByFeatureId.value[tagTabsFirstMeta.id]).toEqual({
+            values: [FIRST_TAG_NAME],
+            isTruncated: false,
+          })
+        })
+
+        await fakeBrowser.storage.local.set({
+          [DISCOVERED_STORAGE_KEY]: {
+            values: [FIRST_TAG_NAME, SECOND_TAG_NAME],
+            isTruncated: false,
+          },
+        })
+        await vi.waitFor(() => {
+          expect(
+            featureSettings.discoveredValuesByFeatureId.value[tagTabsFirstMeta.id]?.values,
+          ).toEqual([FIRST_TAG_NAME, SECOND_TAG_NAME])
+        })
+      })
+    })
+
+    it('функции без опций из обнаруженного снимка не получают', async () => {
+      await withFeatureSettings(async (featureSettings) => {
+        await vi.waitFor(() => {
+          expect(featureSettings.isLoaded.value).toBe(true)
+        })
+        expect(featureSettings.discoveredValuesByFeatureId.value).toEqual({})
+      })
+    })
+
+    it('выбранные теги сохраняются в sync параметром функции', async () => {
+      await withDiscoveringFeature(async (featureSettings) => {
+        await vi.waitFor(() => {
+          expect(featureSettings.isLoaded.value).toBe(true)
+        })
+        await featureSettings.setFeatureOptions(tagTabsFirstMeta.id, {
+          selectedTagNames: [SECOND_TAG_NAME],
+        })
+
+        const storageKey = `feature.${tagTabsFirstMeta.id}`
+        const storedRecord = await fakeBrowser.storage.sync.get(storageKey)
+        expect(storedRecord[storageKey]).toEqual({
+          enabled: false,
+          selectedTagNames: [SECOND_TAG_NAME],
+        })
       })
     })
   })
