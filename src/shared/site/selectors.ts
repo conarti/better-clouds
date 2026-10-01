@@ -168,6 +168,31 @@ export const siteSelectors = {
    * отступом, текст отодвинут от левого края
    */
   chatMessageInner: '.chat-message-inner',
+  /**
+   * Время и статус сообщения с одиночной картинкой без подписи: прямой потомок пузыря,
+   * сосед .chat-message__content. Клиент ставит его абсолютно поверх превью с тёмной плашкой
+   * (разведка живой страницы v3.72.37)
+   */
+  chatMessageImageTime: '.chat-message__bubble > .chat-message__meta--image',
+  /**
+   * То же для сообщения с видео. Уточнение через прямого потомка пузыря обязательно: второй
+   * блок с модификатором --video, длительность внутри превью, этим селектором не выбирается
+   * (разведка живой страницы v3.72.37)
+   */
+  chatMessageVideoTime: '.chat-message__bubble > .chat-message__meta--video',
+  /** Пузырь сообщения: relative, отступ 10px, предок блоков времени и превью (разведка v3.72.37) */
+  chatMessageBubble: '.chat-message__bubble',
+  /** Блок времени любого сообщения: у текстовых он абсолютный у нижнего правого угла пузыря */
+  chatMessageMeta: '.chat-message__meta',
+  /** Превью одиночной картинки внутри содержимого сообщения */
+  chatMessagePicture: '.chat-message__content > .chat-message__picture',
+  /** Превью видео внутри содержимого сообщения */
+  chatMessageVideo: '.chat-message__content > .chat-message__video',
+  /**
+   * Блок длительности видео внутри превью: абсолютный в левом верхнем углу, функция
+   * времени под медиа его не трогает (разведка живой страницы v3.72.37)
+   */
+  chatMessageVideoDuration: '.chat-message__meta--video-duration',
   /** Контейнер аватара в записях списка и в строках сообщений */
   chatAvatar: '.chat-avatar',
   /**

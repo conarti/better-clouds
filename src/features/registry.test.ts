@@ -43,7 +43,16 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     description: 'Скрывает секции колонки навигации по отдельности',
     defaultEnabled: true,
   },
+  {
+    id: 'media-time-below',
+    title: 'Время под картинками и видео',
+    description: 'Время и статус сообщения с картинкой или видео выводятся под превью',
+    defaultEnabled: false,
+  },
 ]
+
+/** Функции, которые меняют привычный вид клиента и поэтому выключены по умолчанию */
+const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = ['media-time-below']
 
 const HAS_PSEUDO_CLASS = ':has('
 const FEATURE_DIRECTORY_PATTERN = /^\.\/([^/]+)\//
@@ -131,9 +140,11 @@ describe('registry', () => {
     expect(registryFeatureIds.every((featureId) => expectedById.has(featureId))).toBe(true)
   })
 
-  it('в первой версии все функции включены по умолчанию', () => {
+  it('функции включены по умолчанию, кроме перечисленных исключений', () => {
     for (const featureMeta of registryFeatureMetas) {
-      expect(featureMeta.defaultEnabled).toBe(true)
+      expect(featureMeta.defaultEnabled).toBe(
+        !DISABLED_BY_DEFAULT_FEATURE_IDS.includes(featureMeta.id),
+      )
     }
   })
 
