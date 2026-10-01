@@ -31,6 +31,52 @@ const EXPECTED_FEATURE_METAS: readonly FeatureMeta[] = [
     description: 'Не показывает во «Все чаты» ботов, с которыми нет переписки',
     defaultEnabled: true,
   },
+  {
+    id: 'compact-mode',
+    title: 'Компактный режим',
+    description: 'Уменьшает высоту строк в списке чатов и переписке',
+    defaultEnabled: true,
+  },
+  {
+    id: 'hide-toolbar-sections',
+    title: 'Секции тулбара',
+    description: 'Скрывает секции колонки навигации по отдельности',
+    defaultEnabled: true,
+  },
+  {
+    id: 'media-time-below',
+    title: 'Время под картинками и видео',
+    description: 'Время и статус переносятся под картинку или видео, а не лежат поверх превью',
+    defaultEnabled: false,
+  },
+  {
+    id: 'tag-tabs-first',
+    title: 'Теги перед «Все чаты»',
+    description: 'Выбранные теги стоят в списке вкладок перед вкладкой «Все чаты»',
+    defaultEnabled: false,
+  },
+  {
+    id: 'thread-mentions-first',
+    title: 'Треды с упоминаниями наверх',
+    description:
+      'На вкладке «Обсуждения» треды с непрочитанным упоминанием идут первыми и отмечены полосой слева',
+    defaultEnabled: false,
+  },
+  {
+    id: 'chat-archive',
+    title: 'Архив чатов',
+    description:
+      'Пункт «В архив» в меню чата прячет чат из списка, вкладка «Архив» показывает такие чаты',
+    defaultEnabled: false,
+  },
+]
+
+/** Функции, которые меняют привычный вид клиента и поэтому выключены по умолчанию */
+const DISABLED_BY_DEFAULT_FEATURE_IDS: readonly string[] = [
+  'media-time-below',
+  'tag-tabs-first',
+  'thread-mentions-first',
+  'chat-archive',
 ]
 
 const HAS_PSEUDO_CLASS = ':has('
@@ -119,9 +165,11 @@ describe('registry', () => {
     expect(registryFeatureIds.every((featureId) => expectedById.has(featureId))).toBe(true)
   })
 
-  it('в первой версии все функции включены по умолчанию', () => {
+  it('функции включены по умолчанию, кроме перечисленных исключений', () => {
     for (const featureMeta of registryFeatureMetas) {
-      expect(featureMeta.defaultEnabled).toBe(true)
+      expect(featureMeta.defaultEnabled).toBe(
+        !DISABLED_BY_DEFAULT_FEATURE_IDS.includes(featureMeta.id),
+      )
     }
   })
 

@@ -42,6 +42,8 @@ const NO_ACTIVE_SUBSCRIPTION_COUNT = 0
 const CONTEXT_CHECK_TICK_COUNT = 3
 const MOUNT_CALL_COUNT_AFTER_TOGGLE = 2
 const MOUNT_FAILURE_ERROR_MESSAGE = 'Монтирование не удалось'
+const OBSERVED_ELEMENT_TAG_NAME = 'div'
+const ANIMATION_FRAME_DELAY_MILLISECONDS = 20
 
 const FAKE_TIMER_METHODS = [
   'setTimeout',
@@ -170,6 +172,12 @@ function createFakeSettingsSource(
         }
       },
       setEnabled: () => Promise.resolve(),
+      getValue: (featureMeta) =>
+        Promise.resolve({ enabled: initialEnabledByFeatureId.get(featureMeta.id) ?? false }),
+      updateValue: () => Promise.resolve(),
+      watchValue() {
+        return () => undefined
+      },
     },
     unwatchCallCount: () => unwatchCalls,
     setEnabled(featureId, isEnabled) {
@@ -325,6 +333,47 @@ describe('createFeatureRuntime', () => {
     expect(readFeatureAttributeNames()).toEqual([])
 
     featureRuntime.stop()
+  })
+
+  it('наблюдатель изменений снимается при выключении и остановке, повторное включение наблюдает', async () => {
+    const featureMeta = createStubFeatureMeta(FIRST_FEATURE_ID)
+    const mutationCallback = vi.fn()
+    const observedElement = document.createElement(OBSERVED_ELEMENT_TAG_NAME)
+    document.body.append(observedElement)
+    const settings = createFakeSettingsSource(new Map([[FIRST_FEATURE_ID, true]]))
+    const featureRuntime = createTestRuntime({
+      featureContents: [
+        {
+          meta: featureMeta,
+          mount: ({ lifecycle }: FeatureMountContext) => {
+            lifecycle.observeMutations(observedElement, mutationCallback, { childList: true })
+          },
+        },
+      ],
+      settingsSource: settings.source,
+    })
+
+    async function appendChildAndFlush(): Promise<void> {
+      observedElement.append(document.createElement(OBSERVED_ELEMENT_TAG_NAME))
+      await Promise.resolve()
+      vi.advanceTimersByTime(ANIMATION_FRAME_DELAY_MILLISECONDS)
+    }
+
+    await featureRuntime.start()
+    await appendChildAndFlush()
+    expect(mutationCallback).toHaveBeenCalledTimes(1)
+
+    settings.setEnabled(FIRST_FEATURE_ID, false)
+    await appendChildAndFlush()
+    expect(mutationCallback).toHaveBeenCalledTimes(1)
+
+    settings.setEnabled(FIRST_FEATURE_ID, true)
+    await appendChildAndFlush()
+    expect(mutationCallback).toHaveBeenCalledTimes(2)
+
+    featureRuntime.stop()
+    await appendChildAndFlush()
+    expect(mutationCallback).toHaveBeenCalledTimes(2)
   })
 
   it('не копит слушатели и таймеры за сто циклов включения и выключения', async () => {

@@ -1,0 +1,73 @@
+import { css } from '@/shared/feature/css'
+import {
+  createFeatureScopeSelector,
+  createFeatureStateAttributeName,
+} from '@/shared/feature/feature-scope'
+import { siteSelectors } from '@/shared/site/selectors'
+import { CHAT_ID_ATTRIBUTE_NAME } from './chat-id-marker'
+
+const ARCHIVE_VIEW_STATE_NAME = 'archive-view'
+const LOADING_MORE_STATE_NAME = 'loading-more'
+
+/** Обычное значение display обёртки записи у клиента (разведка живой страницы v3.72.37) */
+const CHAT_LIST_WRAPPER_DISPLAY = 'block'
+
+/** Признак на корне: выбрана вкладка «Архив», список показывает только архивные чаты */
+export function createArchiveViewAttributeName(featureId: string): string {
+  return createFeatureStateAttributeName(featureId, ARCHIVE_VIEW_STATE_NAME)
+}
+
+/**
+ * Признак на корне: идёт подгрузка следующей страницы в режиме архива. Скрытие при этом не
+ * снимается: список на время подгрузки чуть выше окна, чтобы его можно было прокрутить до
+ * конца (styles.ts)
+ */
+export function createLoadingMoreAttributeName(featureId: string): string {
+  return createFeatureStateAttributeName(featureId, LOADING_MORE_STATE_NAME)
+}
+
+/**
+ * Стили скрытия архивных чатов для текущего списка id. Правило одно на весь список: id
+ * перечислены внутри одного :has(), область сужена до контейнера списка чатов, так как
+ * обёртка записи это общий класс react-contextmenu. При непустом поиске правила не совпадают,
+ * поэтому архивные чаты находятся поиском. В режиме архива наоборот скрыто всё, кроме
+ * архивных; при пустом списке id :has() без аргументов недопустим, поэтому для него
+ * отдельное правило, которое в режиме архива скрывает все записи. Третье правило в режиме
+ * архива показывает архивные записи, которые скрыли бы другие функции (hide-catalog-bots
+ * скрывает каталожных ботов на «Все чаты»): условие активной «Все чаты» дублирует условие
+ * режима архива и поднимает специфичность выше правила hide-catalog-bots
+ */
+export function buildArchiveStylesheet(
+  featureId: string,
+  archivedChatIds: readonly string[],
+): string {
+  const featureScope = createFeatureScopeSelector(featureId)
+  const archiveView = `[${createArchiveViewAttributeName(featureId)}]`
+  const emptySearch = `:has(${siteSelectors.chatListSearchInputEmpty})`
+  const chatListWrappers = `${siteSelectors.chatList} ${siteSelectors.chatListItemWrapper}`
+  const allChatsTabActive = `:has(${siteSelectors.chatListAllChatsTabActive})`
+
+  if (archivedChatIds.length === 0) {
+    return css`
+      ${featureScope}${archiveView}${emptySearch} ${chatListWrappers} {
+        display: none;
+      }
+    `
+  }
+
+  const archivedEntries = archivedChatIds
+    .map((chatId) => `> ${siteSelectors.chatListEntry}[${CHAT_ID_ATTRIBUTE_NAME}="${chatId}"]`)
+    .join(', ')
+
+  return css`
+    ${featureScope}:not(${archiveView})${emptySearch} ${chatListWrappers}:has(${archivedEntries}) {
+      display: none;
+    }
+    ${featureScope}${archiveView}${emptySearch} ${chatListWrappers}:not(:has(${archivedEntries})) {
+      display: none;
+    }
+    ${featureScope}${archiveView}${allChatsTabActive}${emptySearch} ${chatListWrappers}:has(${archivedEntries}) {
+      display: ${CHAT_LIST_WRAPPER_DISPLAY};
+    }
+  `
+}

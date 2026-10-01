@@ -14,18 +14,39 @@ export interface FeatureSettingsValue {
   enabled: boolean
 }
 
+/**
+ * Параметры функции, прозрачные для общего слоя: содержимое интерпретирует только
+ * владелец схемы (settings.ts функции). Ключи не должны конфликтовать с enabled
+ */
+export type FeatureSettingsOptions = Record<string, unknown>
+
+/** Полное хранимое значение: флаг и параметры функции */
+export type FeatureSettingsStoredValue = FeatureSettingsValue & FeatureSettingsOptions
+
 /** Схема для функций без собственного settings.ts */
 export const DEFAULT_FEATURE_SETTINGS: FeatureSettingsDefinition = {
   version: 1,
   migrations: {},
 }
 
-type FeatureSettingsItem = WxtStorageItem<FeatureSettingsValue, Record<string, unknown>>
+type FeatureSettingsItem = WxtStorageItem<FeatureSettingsStoredValue, Record<string, unknown>>
 
 export interface FeatureSettingsSource {
   getAllEnabled(): Promise<Map<string, boolean>>
   watchEnabled(featureMeta: FeatureMeta, callback: (isEnabled: boolean) => void): () => void
   setEnabled(featureMeta: FeatureMeta, isEnabled: boolean): Promise<void>
+  /** Читает полное хранимое значение: флаг и параметры функции */
+  getValue(featureMeta: FeatureMeta): Promise<FeatureSettingsStoredValue>
+  /**
+   * Сливает патч параметров в хранимое значение, флаг enabled не трогает. Читает
+   * актуальное значение, чтобы не затереть параметры, записанные другим контекстом
+   */
+  updateValue(featureMeta: FeatureMeta, optionsPatch: FeatureSettingsOptions): Promise<void>
+  /** Наблюдает за полным хранимым значением, отдаёт его целиком на каждое изменение */
+  watchValue(
+    featureMeta: FeatureMeta,
+    callback: (value: FeatureSettingsStoredValue) => void,
+  ): () => void
 }
 
 export interface FeatureSettingsSourceOptions {
@@ -43,7 +64,7 @@ export function createFeatureSettingsItem(
   featureSettings: FeatureSettingsDefinition = DEFAULT_FEATURE_SETTINGS,
 ): FeatureSettingsItem {
   const storageKey: StorageItemKey = `${FEATURE_SETTINGS_KEY_PREFIX}${featureMeta.id}`
-  return storage.defineItem<FeatureSettingsValue>(storageKey, {
+  return storage.defineItem<FeatureSettingsStoredValue>(storageKey, {
     fallback: { enabled: featureMeta.defaultEnabled },
     version: featureSettings.version,
     migrations: featureSettings.migrations,
@@ -86,6 +107,22 @@ export function createFeatureSettingsSource({
     return item ?? createFeatureSettingsItem(featureMeta, featureSettingsById.get(featureMeta.id))
   }
 
+  /**
+   * Читает хранимое значение с откатом на fallback: отклонённое чтение чужой версии не
+   * должно ломать запись, достаточно значения по умолчанию как базы для слияния
+   */
+  async function readStoredValue(
+    featureMeta: FeatureMeta,
+    item: FeatureSettingsItem,
+  ): Promise<FeatureSettingsStoredValue> {
+    try {
+      return await item.getValue()
+    } catch (readError) {
+      logger.warn(SETTINGS_READ_FAILURE_MESSAGE, featureMeta.id, readError)
+      return { enabled: featureMeta.defaultEnabled }
+    }
+  }
+
   return {
     /**
      * Читает каждый элемент отдельно: storage.getItems не ждёт миграций, а элемент, записанный
@@ -114,7 +151,32 @@ export function createFeatureSettingsSource({
     },
 
     async setEnabled(featureMeta, isEnabled) {
-      await requireItem(featureMeta).setValue({ enabled: isEnabled })
+      const item = requireItem(featureMeta)
+      const currentValue = await readStoredValue(featureMeta, item)
+      await item.setValue({ ...currentValue, enabled: isEnabled })
+    },
+
+    async getValue(featureMeta) {
+      const item = requireItem(featureMeta)
+      return readStoredValue(featureMeta, item)
+    },
+
+    async updateValue(featureMeta, optionsPatch) {
+      const item = requireItem(featureMeta)
+      const currentValue = await readStoredValue(featureMeta, item)
+      const nextValue: FeatureSettingsStoredValue = {
+        ...currentValue,
+        ...optionsPatch,
+        /* enabled не из патча: флаг меняется только через setEnabled */
+        enabled: readEnabledFlag(currentValue, featureMeta),
+      }
+      await item.setValue(nextValue)
+    },
+
+    watchValue(featureMeta, callback) {
+      return requireItem(featureMeta).watch((newValue) => {
+        callback(newValue as FeatureSettingsStoredValue)
+      })
     },
   }
 }

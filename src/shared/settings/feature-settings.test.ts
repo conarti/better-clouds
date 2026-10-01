@@ -140,6 +140,62 @@ describe('feature-settings', () => {
     expect(readEnabledFlag({ enabled: false }, FIRST_FEATURE_META)).toBe(false)
   })
 
+  it('setEnabled не затирает параметры, записанные другим контекстом', async () => {
+    await createFeatureSettingsItem(FIRST_FEATURE_META).setValue({
+      enabled: true,
+      hidden: ['main'],
+    })
+    const source = createSource()
+
+    await source.setEnabled(FIRST_FEATURE_META, false)
+
+    expect(await createFeatureSettingsItem(FIRST_FEATURE_META).getValue()).toEqual({
+      enabled: false,
+      hidden: ['main'],
+    })
+  })
+
+  it('updateValue сливает параметры, не трогая флаг enabled', async () => {
+    const source = createSource()
+    await source.setEnabled(FIRST_FEATURE_META, false)
+
+    await source.updateValue(FIRST_FEATURE_META, { hidden: ['chats'] })
+
+    expect(await source.getValue(FIRST_FEATURE_META)).toEqual({
+      enabled: false,
+      hidden: ['chats'],
+    })
+  })
+
+  it('updateValue заменяет параметр того же имени', async () => {
+    const source = createSource()
+    await source.updateValue(FIRST_FEATURE_META, { hidden: ['chats'] })
+
+    await source.updateValue(FIRST_FEATURE_META, { hidden: [] })
+
+    expect(await source.getValue(FIRST_FEATURE_META)).toEqual({
+      enabled: FIRST_FEATURE_META.defaultEnabled,
+      hidden: [],
+    })
+  })
+
+  it('watchValue отдаёт полное значение на каждое изменение', async () => {
+    const source = createSource()
+    const observedValues: Array<Record<string, unknown>> = []
+    const unwatch = source.watchValue(FIRST_FEATURE_META, (value) => {
+      observedValues.push(value)
+    })
+
+    await source.updateValue(FIRST_FEATURE_META, { hidden: ['calls'] })
+    await source.setEnabled(FIRST_FEATURE_META, false)
+    unwatch()
+
+    expect(observedValues).toEqual([
+      { enabled: FIRST_FEATURE_META.defaultEnabled, hidden: ['calls'] },
+      { enabled: false, hidden: ['calls'] },
+    ])
+  })
+
   it('фабрика передаёт схему функции в элемент хранения', async () => {
     await createFeatureSettingsItem(SECOND_FEATURE_META).setValue({ enabled: false })
     const migrateEnabledFlag = vi.fn(() => ({ enabled: true }))

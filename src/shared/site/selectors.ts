@@ -45,8 +45,27 @@ export const siteSelectors = {
    * и у вспомогательных узлов контекстного меню внутри записей списка
    */
   toolbar: '.layout-pane > .toolbar',
-  /** Бейдж непрочитанных у колокольчика; при нуле клиент его не рендерит */
-  toolbarNotificationBadge: '.icon-with-counter__badge',
+  /**
+   * Кнопка колокольчика: первый .icon-with-counter нижней колонки тулбара, второй это кнопка
+   * сворачивания колонки (разведка живой страницы v3.72.37 и фикстуры v3.70.53)
+   */
+  toolbarNotificationsButton:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:first-child',
+  /** Кнопка сворачивания колонки: второй .icon-with-counter нижней колонки, бейджа у неё нет */
+  toolbarCollapseButton:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:nth-child(2)',
+  /**
+   * Бейдж непрочитанных именно у колокольчика, а не у соседней кнопки сворачивания;
+   * при нуле клиент его не рендерит
+   */
+  toolbarNotificationsButtonBadge:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:first-child > .icon-with-counter__badge',
+  /**
+   * Тот же бейдж, но от самого тулбара: для :has(), где абсолютный путь через .layout-pane
+   * не работает, так как внутри :has() селектор отсчитывается от тулбара
+   */
+  toolbarNotificationsButtonBadgeFromToolbar:
+    '> .column:nth-of-type(8) > .icon-with-counter:first-child > .icon-with-counter__badge',
   /**
    * Открытое меню, вызванное из колонки навигации. Порталов у таких меню нет, поэтому
    * достаточно уточнения через .toolbar; контекстное меню чата под этот селектор не попадает
@@ -58,6 +77,13 @@ export const siteSelectors = {
    * Нужен браузерному тесту autohide-toolbar: им проверяется, что такое меню колонку не раскрывает
    */
   chatContextMenu: '.layout-pane > nav.react-contextmenu.chat-context-menu',
+  /**
+   * Открытое контекстное меню записи чата. Узел меню существует и в закрытом состоянии,
+   * пункты клиент рисует только в открытом, модификатор --visible ставит библиотека
+   * react-contextmenu (разведка живой страницы v3.72.37)
+   */
+  chatContextMenuVisible:
+    '.layout-pane > nav.react-contextmenu.chat-context-menu.react-contextmenu--visible',
   /** Список вкладок над списком чатов: «Все чаты», «Каталог», «Обсуждения», «Упоминания» */
   chatListTabsList: '.layout-pane__search .tabs__list',
   /**
@@ -66,6 +92,33 @@ export const siteSelectors = {
    */
   chatListAllChatsTabActive:
     '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:first-child > .tab--selected',
+  /**
+   * Активная вкладка «Обсуждения» (треды). Идентификатор вкладки в разметку не выводится,
+   * поэтому вкладка определяется позицией: третья из четырёх системных. Теги идут после
+   * системных, а tag-tabs-first двигает их только CSS order, поэтому позиция в DOM не меняется
+   * (разведка живой страницы v3.72.37)
+   */
+  chatListThreadsTabActive:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:nth-child(3) > .tab--selected',
+  /**
+   * Активная вкладка пользовательского тега: теги идут после четырёх системных вкладок и
+   * отличаются от них только позицией. Своя вкладка «Архив» это кнопка без обёртки, поэтому
+   * под селектор не попадает (разведка живой страницы v3.72.37)
+   */
+  chatListUserTagTabActive:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:nth-child(n+5) > .tab--selected',
+  /**
+   * Обёртка вкладки в списке вкладок, прямой ребёнок списка. У обёртки display: contents,
+   * поэтому элементом flex-списка выступает кнопка внутри неё (разведка живой страницы v3.72.37)
+   */
+  chatListTabWrapper: '.react-contextmenu-wrapper',
+  /**
+   * Кнопка вкладки внутри обёртки. Подчёркивание выбранной вкладки это её ::after с
+   * position: absolute, поэтому оно едет вместе с кнопкой (разведка живой страницы v3.72.37)
+   */
+  chatListTabButton: 'button.tab',
+  /** Подпись вкладки внутри кнопки: имя системной вкладки или пользовательского тега */
+  chatListTabLabel: 'button.tab > span',
   /**
    * Поле поиска над списком чатов: редактор Slate, а не input. Нужен браузерному тесту
    * hide-catalog-bots: им тест имитирует ввод в поиск
@@ -79,6 +132,18 @@ export const siteSelectors = {
     '.search-filter-panel--chat .search-filter-panel-input__editor:not(.search-filter-panel-input__editor--value)',
   /** Контейнер записей списка чатов, в нём же рендерятся результаты поиска */
   chatList: '.layout-pane__chat-list .scroll-custom__content',
+  /**
+   * Прокручиваемый элемент списка чатов. Клиент подгружает следующую страницу записей,
+   * когда он прокручен до конца (разведка живой страницы v3.72.37: 20 записей при загрузке,
+   * по 10 за подгрузку)
+   */
+  chatListScroller: '.layout-pane__chat-list .scroll-custom__scroller',
+  /**
+   * Кнопка вкладки «Все чаты»: первая вкладка списка, идентификатора в разметке нет
+   * (разведка живой страницы v3.72.37)
+   */
+  chatListAllChatsTabButton:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:first-child > button.tab',
   /** Обёртка записи списка, она же носитель контекстного меню записи */
   chatListItemWrapper: '.react-contextmenu-wrapper',
   /** Запись списка чатов */
@@ -89,6 +154,29 @@ export const siteSelectors = {
    */
   chatListEntryCatalogInfo: '.chat-list-entry__info--catalog',
   /**
+   * Признак упоминания в записи треда: клиент рисует счётчик упоминаний (`@` или `@N`) тем же
+   * классом .chat-list-entry-counter сразу перед счётчиком непрочитанных, а счётчик
+   * непрочитанных при упоминании есть всегда. Поэтому признак это пара соседних счётчиков в
+   * блоке meta записи треда; селектор выбирает второй из пары. Модификатор --min есть только
+   * при одном упоминании, поэтому на него и на текст `@` признак не опирается
+   * (код клиента v3.72.37, живого треда с упоминанием при разведке не было)
+   */
+  threadListEntryMentionCounterPair:
+    '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter + .chat-list-entry-counter',
+  /**
+   * Счётчик непрочитанных в записи чата: есть только при непрочитанных, приглушённый
+   * модификатор --muted при «не беспокоить» (фикстура layout-all-chats.html v3.70.53)
+   */
+  chatListEntryUnreadCounter: '.chat-list-entry__meta > .chat-list-entry-counter',
+  /**
+   * Признак записи треда: блок thread-extra есть только у тредов
+   * (фикстура layout-threads-tab.html v3.72.37)
+   */
+  chatListEntryThreadExtra: '.chat-list-entry__thread-extra',
+  /** Счётчик в блоке meta записи треда: непрочитанные или упоминания */
+  threadListEntryCounter:
+    '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter',
+  /**
    * Область закреплённых чатов с перетаскиванием. Нужен браузерному тесту hide-catalog-bots:
    * им тест считает закреплённые записи
    */
@@ -98,6 +186,108 @@ export const siteSelectors = {
    * с !important, поэтому наши переходы в нём требуют собственного !important
    */
   reducedAnimationsBody: 'body[reduced_animations]',
+  /**
+   * Кнопка секции колонки навигации без меню: иконка и заголовок. В селекторе функции
+   * секция уточняется позицией: идентификатор секции в разметку не выводится
+   * (разведка живой страницы v3.72.37)
+   */
+  toolbarSectionButton: '.section-button',
+  /**
+   * Обёртка секции колонки навигации с контекстным меню («Чаты», «Звонки»). Сам блок
+   * секции это .section-button внутри обёртки; обёртка прячется целиком, вместе с меню
+   * (разведка живой страницы v3.72.37)
+   */
+  toolbarSectionMenuWrapper: '.react-contextmenu-wrapper',
+  /** Блок умных приложений под колонкой навигации; сайт задаёт ему модификатор колонки */
+  toolbarSmartappSection: '.column.toolbar__smartapp-section',
+  /**
+   * Кнопка секции «Main»: вторая колонка внутри тулбара. Идентификатор секции в разметку
+   * не выводится, поэтому секция определяется позицией среди восьми детей .toolbar
+   * (разведка живой страницы v3.72.37); если сайт изменит порядок, селектор просто не
+   * найдёт элемента и ничего не спрячет
+   */
+  toolbarSectionMain: '.layout-pane > .toolbar > .section-button:nth-of-type(2)',
+  /** Секция «Чаты»: обёртка контекстного меню, третий ребёнок тулбара */
+  toolbarSectionChats: '.layout-pane > .toolbar > .react-contextmenu-wrapper:nth-of-type(3)',
+  /** Секция «Контакты»: четвёртый ребёнок тулбара */
+  toolbarSectionContacts: '.layout-pane > .toolbar > .section-button:nth-of-type(4)',
+  /** Секция «Звонки»: обёртка контекстного меню, пятый ребёнок тулбара */
+  toolbarSectionCalls: '.layout-pane > .toolbar > .react-contextmenu-wrapper:nth-of-type(5)',
+  /** Кнопка секции «SmartApps»: шестой ребёнок тулбара */
+  toolbarSectionSmartapps: '.layout-pane > .toolbar > .section-button:nth-of-type(6)',
+  /**
+   * Блок умных приложений под секциями: в отличие от кнопок определяется классом — у него
+   * он стабильный модификатор, а не позиция
+   */
+  toolbarSmartappSectionBlock: '.layout-pane > .toolbar > .column.toolbar__smartapp-section',
+  /**
+   * Колонка настроек вверху тулбара (аватар и статус): функция секции не трогает её,
+   * браузерный тест проверяет это отдельно
+   */
+  toolbarSettingsColumn: '.layout-pane > .toolbar > .column.settings-button',
+  /**
+   * Нижняя колонка тулбара (уведомления, сворачивание, версия): определяется позицией —
+   * восьмой ребёнок, у неё нет собственного модификатора
+   */
+  toolbarBottomColumn: '.layout-pane > .toolbar > .column:nth-of-type(8)',
+  /** Строка сообщения в переписке; сайт задаёт ей вертикальные отступы */
+  chatMessageRow: '.chat-message-row',
+  /**
+   * Внутренний блок строки сообщения: карман под аватар вырезается отрицательным
+   * отступом, текст отодвинут от левого края
+   */
+  chatMessageInner: '.chat-message-inner',
+  /**
+   * Время и статус сообщения с одиночной картинкой без подписи: прямой потомок пузыря,
+   * сосед .chat-message__content. Клиент ставит его абсолютно поверх превью с тёмной плашкой
+   * (разведка живой страницы v3.72.37)
+   */
+  chatMessageImageTime: '.chat-message__bubble > .chat-message__meta--image',
+  /**
+   * То же для сообщения с видео. Уточнение через прямого потомка пузыря обязательно: второй
+   * блок с модификатором --video, длительность внутри превью, этим селектором не выбирается
+   * (разведка живой страницы v3.72.37)
+   */
+  chatMessageVideoTime: '.chat-message__bubble > .chat-message__meta--video',
+  /**
+   * Время сообщения с картинкой, видео или альбомом без подписи, найденное по заголовку пузыря,
+   * а не по модификатору времени: --image или --video клиент ставит только после загрузки превью,
+   * до этого блок без модификаторов тоже лежит абсолютно поверх превью. Заголовок получает --media
+   * по типу сообщения сразу. Подпись даёт времени модификатор --text, реакции --reactions, в обоих
+   * случаях время уже под превью. Стикер и геопозиция расставляют время своими правилами и не
+   * входят (разведка живой страницы v3.72.37)
+   */
+  chatMessageMediaTime:
+    '.chat-message__bubble:not(.chat-message__bubble--sticker) > .chat-message__header--media ~ .chat-message__meta:not(.chat-message__meta--text):not(.chat-message__meta--reactions):not(.chat-message__meta--location)',
+  /**
+   * Значки статуса и счётчика просмотров во времени над превью: клиент красит их в белый под
+   * тёмную плашку (правило .chat-message__meta--image:not(.chat-message__meta--reactions),
+   * разведка живой страницы v3.72.37). Статус «прочитано» красится своим правилом и сюда не входит
+   */
+  chatMessageMediaTimeLightIcon:
+    ':is(.chat-message__status--local, .chat-message__status--received, .chat-message__status--sent, .message-view-counter svg)',
+  /** Пузырь сообщения: relative, отступ 10px, предок блоков времени и превью (разведка v3.72.37) */
+  chatMessageBubble: '.chat-message__bubble',
+  /** Блок времени любого сообщения: у текстовых он абсолютный у нижнего правого угла пузыря */
+  chatMessageMeta: '.chat-message__meta',
+  /** Превью одиночной картинки внутри содержимого сообщения */
+  chatMessagePicture: '.chat-message__content > .chat-message__picture',
+  /** Превью видео внутри содержимого сообщения */
+  chatMessageVideo: '.chat-message__content > .chat-message__video',
+  /**
+   * Блок длительности видео внутри превью: абсолютный в левом верхнем углу, функция
+   * времени под медиа его не трогает (разведка живой страницы v3.72.37)
+   */
+  chatMessageVideoDuration: '.chat-message__meta--video-duration',
+  /** Контейнер аватара в записях списка и в строках сообщений */
+  chatAvatar: '.chat-avatar',
+  /**
+   * Аватар в записи списка чатов. Клиент задаёт его размеры inline-стилями, поэтому
+   * компактный режим перебивает их только с !important (разведка живой страницы v3.72.37)
+   */
+  chatListEntryAvatarInner: '.chat-avatar__inner',
+  /** Разделитель дат в переписке; компактный режим его не затрагивает */
+  dateSplitter: '.date-splitter',
 } as const
 
 /**
@@ -107,6 +297,38 @@ export const siteSelectors = {
 export const siteClassNames = {
   /** Модификатор непустого поля поиска: редактор Slate не хранит значение в атрибуте */
   chatListSearchInputValue: 'search-filter-panel-input__editor--value',
+  /** Модификатор выбранной вкладки списка: им browser-тест выбирает вкладку тега */
+  chatListTabSelected: 'tab--selected',
+  /** Кнопка вкладки списка: вкладка «Архив» берёт вид вкладок клиента */
+  chatListTab: 'tab',
+  /** Счётчик на вкладке, как у вкладки «Упоминания» (разведка живой страницы v3.72.37) */
+  chatListTabCounter: 'tab-counter',
+  /** Видимый счётчик вкладки */
+  chatListTabCounterVisible: 'tab-counter--visible',
+  /** Приглушённый счётчик вкладки: серый фон вместо акцентного */
+  chatListTabCounterMuted: 'tab-counter--muted',
+  /** Число внутри счётчика вкладки */
+  chatListTabCounterValue: 'tab-counter__value',
+  /** Модификатор открытого меню react-contextmenu: им тесты открывают меню чата */
+  contextMenuVisible: 'react-contextmenu--visible',
+  /** Пункт контекстного меню чата, класс библиотеки react-contextmenu */
+  chatContextMenuItem: 'react-contextmenu-item',
+  /**
+   * Классы строки пункта меню: отступы, шрифт и подсветка при наведении
+   * (фикстура chat-context-menu-open.html v3.70.53, живая страница v3.72.37)
+   */
+  chatContextMenuItemRow: ['row', 'dropdown-menu-item', 'press-box-on-top'],
+  /** Красный текст пункта меню, как у пункта удаления: им пункт архива показывает ошибку */
+  negativeText: 'text--negative',
+} as const
+
+/**
+ * Имена тегов, совпадающие с классами сайта: у клиента есть класс button, поэтому тест
+ * изоляции селекторов не отличает тег от класса, и имя живёт здесь
+ */
+export const siteTagNames = {
+  /** Кнопка: вкладка списка у клиента это button.tab, ей же сделаны свои кнопки функции */
+  button: 'button',
 } as const
 
 /** Имена атрибутов сайта, которые не начинаются с data- */
@@ -120,8 +342,15 @@ export const siteAttributeNames = {
  * содержат значение текущей темы, поэтому вариантов под каждую тему не требуется
  */
 export const siteCustomPropertyNames = {
-  /** Цвет точки непрочитанных у спрятанной колонки */
+  /** Акцентный цвет клиента: точка непрочитанных у спрятанной колонки, полоса тредов с упоминанием */
   buttonPrimary: '--button-primary',
+  /** Цвет невыбранной вкладки списка (правило клиента .tab, разведка v3.72.37) */
+  textSecondary: '--text-secondary',
+  /**
+   * Цвет значка статуса сообщения: клиент задаёт его на .chat-message__status и красит значок
+   * через var(), у статуса последнего события значение своё (разведка живой страницы v3.72.37)
+   */
+  messageStatusIconColor: '--_icon-color',
   /**
    * Отступ сверху центральной колонки: сайт вычитает его же из высоты .layout-pane__body
    * (разведка живой страницы v3.70.x: :root задаёт 16px, .layout-pane берёт его в padding-top,

@@ -10,6 +10,12 @@ export const FEATURE_STATE_SEPARATOR = '_'
 /** Маркер собственных элементов со стилями: по нему видно вторую копию расширения на странице */
 export const FEATURE_STYLE_MARKER_ATTRIBUTE_NAME = 'data-better-clouds-feature-style'
 
+/**
+ * Маркер элементов, которые расширение само добавило в разметку клиента. Функции, читающие
+ * разметку клиента, пропускают такие узлы, чтобы не принять свой элемент за клиентский
+ */
+export const FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME = 'data-better-clouds-owned'
+
 /** Медиазапрос выключенной функции: правила остаются в документе, но не участвуют в каскаде */
 export const INACTIVE_STYLE_MEDIA_QUERY = 'not all'
 

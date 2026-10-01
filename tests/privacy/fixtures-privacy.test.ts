@@ -17,11 +17,15 @@ interface FixturePrivacyRules {
 
 const PROJECT_ROOT_PATH = path.resolve(import.meta.dirname, '..', '..')
 const PRIVACY_RULES_RELATIVE_PATH = 'tests/fixtures/fixture-privacy-rules.json'
-const FIXTURES_RELATIVE_PATH = 'tests/fixtures/clouds-v3.70.53'
+const FIXTURES_RELATIVE_PATH = 'tests/fixtures'
 const FIXTURE_FILE_EXTENSION = '.html'
 const UTF8_ENCODING = 'utf8'
 
-const EXPECTED_FIXTURE_COUNT = 8
+/** Ожидаемое число фрагментов в каждой папке версии клиента */
+const EXPECTED_FIXTURE_COUNT_BY_VERSION_DIRECTORY: Readonly<Record<string, number>> = {
+  'clouds-v3.70.53': 8,
+  'clouds-v3.72.37': 4,
+}
 const MAXIMUM_FIXTURE_SIZE_BYTES = 150 * 1024
 
 const HTML_MEDIA_TYPE = 'text/html'
@@ -32,7 +36,7 @@ const CLASS_ATTRIBUTE_NAME = 'class'
 const STYLE_ATTRIBUTE_NAME = 'style'
 const HREF_ATTRIBUTE_NAME = 'href'
 const HREF_ALLOWED_VALUE = '#'
-const FORBIDDEN_ATTRIBUTE_NAMES = ['src', 'srcset']
+const FORBIDDEN_ATTRIBUTE_NAMES = ['src', 'srcset', 'poster']
 const WILDCARD_SUFFIX = '*'
 const URL_FUNCTION_MARKER = 'url('
 const ZERO_WIDTH_CHARACTERS_PATTERN = new RegExp('[\\u200b-\\u200f\\ufeff]', 'g')
@@ -59,18 +63,23 @@ const STRUCTURAL_FRAGMENT =
   '<path fill="#fff"></path></svg>' +
   '<input type="text" value="Бот"></div>'
 
+const USER_TAG_FRAGMENT = '<button class="tab"><span>Проект Альфа</span></button>'
+const USER_TAG_PLACEHOLDER_FRAGMENT = '<button class="tab"><span>Тег 1</span></button>'
+
 const privacyRules = JSON.parse(
   fs.readFileSync(path.join(PROJECT_ROOT_PATH, PRIVACY_RULES_RELATIVE_PATH), UTF8_ENCODING),
 ) as FixturePrivacyRules
 
 const fixturesDirectoryPath = path.join(PROJECT_ROOT_PATH, FIXTURES_RELATIVE_PATH)
+const versionDirectoryNames = Object.keys(EXPECTED_FIXTURE_COUNT_BY_VERSION_DIRECTORY)
 
-/** Имена файлов обезличенных фрагментов разметки */
-function readFixtureFileNames(): string[] {
+/** Пути обезличенных фрагментов разметки внутри папки версии, относительно tests/fixtures */
+function readFixtureFilePaths(versionDirectoryName: string): string[] {
   return fs
-    .readdirSync(fixturesDirectoryPath)
+    .readdirSync(path.join(fixturesDirectoryPath, versionDirectoryName))
     .filter((fileName) => fileName.endsWith(FIXTURE_FILE_EXTENSION))
     .sort()
+    .map((fileName) => path.join(versionDirectoryName, fileName))
 }
 
 /** Проверяет значение по списку строковых шаблонов */
@@ -177,10 +186,24 @@ function findPrivacyViolations(fixtureHtml: string): string[] {
 }
 
 describe('гейт приватности обезличенных фрагментов', () => {
-  const fixtureFileNames = readFixtureFileNames()
+  const fixtureFileNames = versionDirectoryNames.flatMap(readFixtureFilePaths)
 
-  it('фрагментов ровно столько, сколько описано в процедуре снятия', () => {
-    expect(fixtureFileNames).toHaveLength(EXPECTED_FIXTURE_COUNT)
+  it.each(versionDirectoryNames)(
+    'в папке %s фрагментов ровно столько, сколько описано в процедуре снятия',
+    (versionDirectoryName) => {
+      expect(readFixtureFilePaths(versionDirectoryName)).toHaveLength(
+        EXPECTED_FIXTURE_COUNT_BY_VERSION_DIRECTORY[versionDirectoryName] ?? 0,
+      )
+    },
+  )
+
+  it('каждая папка версии клиента учтена в ожидаемом числе фрагментов', () => {
+    const actualVersionDirectoryNames = fs
+      .readdirSync(fixturesDirectoryPath, { withFileTypes: true })
+      .filter((directoryEntry) => directoryEntry.isDirectory())
+      .map((directoryEntry) => directoryEntry.name)
+      .sort()
+    expect(actualVersionDirectoryNames).toEqual([...versionDirectoryNames].sort())
   })
 
   it.each(fixtureFileNames)('%s не содержит персональных данных', (fixtureFileName) => {
@@ -204,6 +227,13 @@ describe('самопроверка гейта приватности', () => {
     expect(violations).toContain('span[aria-description]: атрибут вне белого списка')
     expect(violations).toContain('button[aria-label]: атрибут вне белого списка')
     expect(violations).toContain('текст вне белого списка: Личное сообщение')
+  })
+
+  it('ловит имя пользовательского тега без заменителя', () => {
+    expect(findPrivacyViolations(USER_TAG_FRAGMENT)).toContain(
+      'текст вне белого списка: Проект Альфа',
+    )
+    expect(findPrivacyViolations(USER_TAG_PLACEHOLDER_FRAGMENT)).toEqual([])
   })
 
   it('пропускает фрагмент со структурными атрибутами', () => {

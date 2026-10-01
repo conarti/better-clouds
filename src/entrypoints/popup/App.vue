@@ -7,7 +7,18 @@ import { useFeatureSettings } from './composables/useFeatureSettings'
 const FOOTER_TEXT = 'Изменения применяются сразу на открытых вкладках Клаудс'
 
 const extensionVersion = browser.runtime.getManifest().version
-const { enabledByFeatureId, isLoaded, setFeatureEnabled } = useFeatureSettings()
+const {
+  enabledByFeatureId,
+  isLoaded,
+  storedValuesByFeatureId,
+  discoveredValuesByFeatureId,
+  setFeatureEnabled,
+  setFeatureOptions,
+} = useFeatureSettings()
+
+function handleHiddenSectionsChange(featureId: string, sectionIds: string[]): void {
+  void setFeatureOptions(featureId, { hidden: sectionIds })
+}
 </script>
 
 <template>
@@ -15,8 +26,12 @@ const { enabledByFeatureId, isLoaded, setFeatureEnabled } = useFeatureSettings()
     <PopupHeader :version="extensionVersion" />
     <FeatureSettingsList
       :enabled-by-feature-id="enabledByFeatureId"
+      :stored-values-by-feature-id="storedValuesByFeatureId"
+      :discovered-values-by-feature-id="discoveredValuesByFeatureId"
       :is-loaded="isLoaded"
       @update:enabled="setFeatureEnabled"
+      @update:hidden="handleHiddenSectionsChange"
+      @update:options="setFeatureOptions"
     />
     <p class="popup__footer">{{ FOOTER_TEXT }}</p>
   </main>
