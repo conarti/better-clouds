@@ -27,7 +27,7 @@ const HREF_ATTRIBUTE_NAME = 'href'
 const HREF_ALLOWED_VALUE = '#'
 const PATH_ELEMENT_NAME = 'path'
 const PATH_DATA_ATTRIBUTE_NAME = 'd'
-const REMOVED_ATTRIBUTE_NAMES = ['src', 'srcset']
+const REMOVED_ATTRIBUTE_NAMES = ['src', 'srcset', 'poster']
 const IDENTIFIER_ATTRIBUTE_NAMES = ['id', 'data-open-chat']
 const IDENTIFIER_ATTRIBUTE_PREFIX = 'data-rbd-'
 const FIXTURE_IDENTIFIER_PREFIX = 'fixture-id-'
@@ -53,6 +53,9 @@ const PLACEHOLDER_RULES = [
   { ancestorSelector: SEARCH_EDITOR_SELECTOR, fixedText: SEARCH_QUERY_TEXT },
   { ancestorSelector: '[class*="initials"]', fixedText: AVATAR_INITIALS_TEXT },
   { ancestorSelector: '[class*="avatar"]', fixedText: AVATAR_INITIALS_TEXT },
+  { ancestorSelector: '.layout-pane__search .tab', placeholderPrefix: 'Тег' },
+  { ancestorSelector: '.chat-message__title-text', placeholderPrefix: 'Пользователь' },
+  { ancestorSelector: '.service-card', placeholderPrefix: 'Приложение' },
   { ancestorSelector: '.chat-list-entry__info--catalog', placeholderPrefix: 'Бот' },
   { ancestorSelector: '.chat-list-entry', placeholderPrefix: 'Чат' },
   { ancestorSelector: '.toolbar__smartapp-section', placeholderPrefix: 'Приложение' },
@@ -67,6 +70,11 @@ const CHAT_LIST_ENTRY_SELECTOR = '.chat-list-entry'
 const CHAT_LIST_ENTRY_CATALOG_SELECTOR = '.chat-list-entry__info--catalog'
 const CHAT_LIST_PINNED_DROPPABLE_SELECTOR = '[data-rbd-droppable-id]'
 const MAXIMUM_ENTRY_COUNT = 10
+const MESSAGE_ROW_SELECTOR = '.chat-message-row'
+const MESSAGE_PICTURE_SELECTOR = '.chat-message__picture'
+const MESSAGE_VIDEO_SELECTOR = '.chat-message__video'
+const PICTURE_MESSAGE_KIND = 'picture'
+const VIDEO_MESSAGE_KIND = 'video'
 const PINNED_ENTRY_KIND = 'pinned'
 const CATALOG_ENTRY_KIND = 'catalog'
 const REGULAR_ENTRY_KIND = 'regular'
@@ -292,6 +300,27 @@ function trimFixtureChatListEntries(rootElement) {
 }
 
 /**
+ * Оставляет не больше десяти строк переписки каждого типа: с картинкой, с видео и остальных,
+ * чтобы фрагмент переписки уложился в лимит размера
+ * @param {Element} rootElement
+ */
+function trimFixtureMessageRows(rootElement) {
+  const rowCounts = {}
+  for (const messageRow of rootElement.querySelectorAll(MESSAGE_ROW_SELECTOR)) {
+    let rowKind = REGULAR_ENTRY_KIND
+    if (messageRow.querySelector(MESSAGE_VIDEO_SELECTOR)) {
+      rowKind = VIDEO_MESSAGE_KIND
+    } else if (messageRow.querySelector(MESSAGE_PICTURE_SELECTOR)) {
+      rowKind = PICTURE_MESSAGE_KIND
+    }
+    rowCounts[rowKind] = (rowCounts[rowKind] || 0) + 1
+    if (rowCounts[rowKind] > MAXIMUM_ENTRY_COUNT) {
+      messageRow.remove()
+    }
+  }
+}
+
+/**
  * Готовит обезличенный фрагмент разметки
  * @param {string | Element} rootSelectorOrElement селектор корня или сам элемент
  * @param {object} privacyRules
@@ -309,6 +338,7 @@ function createBetterCloudsFixture(rootSelectorOrElement, privacyRules, mode) {
   const targetElement = mode === CLONE_MODE ? sourceElement.cloneNode(true) : sourceElement
   const counters = {}
   trimFixtureChatListEntries(targetElement)
+  trimFixtureMessageRows(targetElement)
   const processedElementCount = anonymizeFixtureTree(targetElement, privacyRules, counters, mode)
   return mode === CLONE_MODE ? targetElement.outerHTML : processedElementCount
 }
@@ -323,6 +353,7 @@ const SNIPPET_FUNCTIONS = [
   anonymizeFixtureAttributes,
   anonymizeFixtureTree,
   trimFixtureChatListEntries,
+  trimFixtureMessageRows,
   createBetterCloudsFixture,
 ]
 
@@ -353,6 +384,11 @@ const SNIPPET_CONSTANTS = {
   CHAT_LIST_ENTRY_CATALOG_SELECTOR,
   CHAT_LIST_PINNED_DROPPABLE_SELECTOR,
   MAXIMUM_ENTRY_COUNT,
+  MESSAGE_ROW_SELECTOR,
+  MESSAGE_PICTURE_SELECTOR,
+  MESSAGE_VIDEO_SELECTOR,
+  PICTURE_MESSAGE_KIND,
+  VIDEO_MESSAGE_KIND,
   PINNED_ENTRY_KIND,
   CATALOG_ENTRY_KIND,
   REGULAR_ENTRY_KIND,
