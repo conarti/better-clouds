@@ -14,6 +14,8 @@ const FORBIDDEN_GLOBAL_NAMES = ['document', 'window', 'browser']
 const FINDING_SEPARATOR = ': '
 const LINE_NUMBER_OFFSET = 1
 const CONTENT_SCRIPT_MODULE_PATH = '../../src/entrypoints/content.ts'
+/** Скрипт главного мира страницы: такой же content script, правило то же */
+const MAIN_WORLD_CONTENT_SCRIPT_MODULE_PATH = '../../src/entrypoints/chat-ids.content.ts'
 const FEATURE_MODULE_FILE_NAMES = ['content.ts', 'meta.ts', 'styles.ts']
 const FEATURE_DIRECTORY_PATTERN = /src\/features\/([^/]+)\//
 const TEST_MODULE_SUFFIX = '.test.ts'
@@ -21,6 +23,7 @@ const TEST_MODULE_SUFFIX = '.test.ts'
 const checkedSourceModules = import.meta.glob<string>(
   [
     '../../src/entrypoints/content.ts',
+    '../../src/entrypoints/*.content.ts',
     '../../src/features/*/*.ts',
     '!../../src/features/*/*.test.ts',
   ],
@@ -133,6 +136,7 @@ describe('верхний уровень модулей функций', () => {
     const checkedModulePaths = Object.keys(checkedSourceModules)
     expect(featureDirectoryNames.length).toBeGreaterThan(0)
     expect(checkedModulePaths).toContain(CONTENT_SCRIPT_MODULE_PATH)
+    expect(checkedModulePaths).toContain(MAIN_WORLD_CONTENT_SCRIPT_MODULE_PATH)
     for (const directoryName of featureDirectoryNames) {
       for (const moduleFileName of FEATURE_MODULE_FILE_NAMES) {
         expect(checkedModulePaths).toContain(

@@ -67,7 +67,9 @@ export function useFeatureSettings(
   const discoveringFeatureMetas = featureMetas.filter((featureMeta) =>
     featureSettingsRegistry
       .get(featureMeta.id)
-      ?.popupOptions?.some((popupOption) => popupOption.source === DISCOVERED_VALUES_SOURCE),
+      ?.popupOptions?.some(
+        (popupOption) => 'source' in popupOption && popupOption.source === DISCOVERED_VALUES_SOURCE,
+      ),
   )
 
   function setDiscoveredValues(featureId: string, storedValue: unknown): void {

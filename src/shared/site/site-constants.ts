@@ -18,3 +18,17 @@ export const CHAT_LIST_ROUTE_HASH_PATTERN = /^(#\/(chats\/[^/]+(\/[^/]+)?)?)?$/
  * только позицией, своих атрибутов у вкладки тега нет (разведка живой страницы v3.72.37)
  */
 export const CHAT_LIST_SYSTEM_TAB_COUNT = 4
+
+/**
+ * Начало имени свойства, в котором React хранит fiber узла DOM. Видно только в главном мире
+ * страницы. Ключ записи списка чатов это UUID чата, другого идентификатора в разметке нет:
+ * data-open-chat хранит "true" или "false" (разведка живой страницы v3.72.37)
+ */
+export const REACT_FIBER_PROPERTY_PREFIX = '__reactFiber$'
+
+/**
+ * Событие на window, по которому react-contextmenu закрывает открытые меню. Клик по своему
+ * пункту меню сам меню не закрывает: библиотека закрывает его только по клику снаружи
+ * (проверено на живой странице v3.72.37)
+ */
+export const REACT_CONTEXTMENU_HIDE_EVENT_NAME = 'REACT_CONTEXTMENU_HIDE'

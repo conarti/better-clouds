@@ -77,6 +77,13 @@ export const siteSelectors = {
    * Нужен браузерному тесту autohide-toolbar: им проверяется, что такое меню колонку не раскрывает
    */
   chatContextMenu: '.layout-pane > nav.react-contextmenu.chat-context-menu',
+  /**
+   * Открытое контекстное меню записи чата. Узел меню существует и в закрытом состоянии,
+   * пункты клиент рисует только в открытом, модификатор --visible ставит библиотека
+   * react-contextmenu (разведка живой страницы v3.72.37)
+   */
+  chatContextMenuVisible:
+    '.layout-pane > nav.react-contextmenu.chat-context-menu.react-contextmenu--visible',
   /** Список вкладок над списком чатов: «Все чаты», «Каталог», «Обсуждения», «Упоминания» */
   chatListTabsList: '.layout-pane__search .tabs__list',
   /**
@@ -118,6 +125,18 @@ export const siteSelectors = {
     '.search-filter-panel--chat .search-filter-panel-input__editor:not(.search-filter-panel-input__editor--value)',
   /** Контейнер записей списка чатов, в нём же рендерятся результаты поиска */
   chatList: '.layout-pane__chat-list .scroll-custom__content',
+  /**
+   * Прокручиваемый элемент списка чатов. Клиент подгружает следующую страницу записей,
+   * когда он прокручен до конца (разведка живой страницы v3.72.37: 20 записей при загрузке,
+   * по 10 за подгрузку)
+   */
+  chatListScroller: '.layout-pane__chat-list .scroll-custom__scroller',
+  /**
+   * Кнопка вкладки «Все чаты»: первая вкладка списка, идентификатора в разметке нет
+   * (разведка живой страницы v3.72.37)
+   */
+  chatListAllChatsTabButton:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:first-child > button.tab',
   /** Обёртка записи списка, она же носитель контекстного меню записи */
   chatListItemWrapper: '.react-contextmenu-wrapper',
   /** Запись списка чатов */
@@ -137,6 +156,11 @@ export const siteSelectors = {
    */
   threadListEntryMentionCounterPair:
     '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter + .chat-list-entry-counter',
+  /**
+   * Счётчик непрочитанных в записи чата: есть только при непрочитанных, приглушённый
+   * модификатор --muted при «не беспокоить» (фикстура layout-all-chats.html v3.70.53)
+   */
+  chatListEntryUnreadCounter: '.chat-list-entry__meta > .chat-list-entry-counter',
   /** Счётчик в блоке meta записи треда: непрочитанные или упоминания */
   threadListEntryCounter:
     '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter',
@@ -246,6 +270,36 @@ export const siteClassNames = {
   chatListSearchInputValue: 'search-filter-panel-input__editor--value',
   /** Модификатор выбранной вкладки списка: им browser-тест выбирает вкладку тега */
   chatListTabSelected: 'tab--selected',
+  /** Кнопка вкладки списка: вкладка «Архив» берёт вид вкладок клиента */
+  chatListTab: 'tab',
+  /** Счётчик на вкладке, как у вкладки «Упоминания» (разведка живой страницы v3.72.37) */
+  chatListTabCounter: 'tab-counter',
+  /** Видимый счётчик вкладки */
+  chatListTabCounterVisible: 'tab-counter--visible',
+  /** Приглушённый счётчик вкладки: серый фон вместо акцентного */
+  chatListTabCounterMuted: 'tab-counter--muted',
+  /** Число внутри счётчика вкладки */
+  chatListTabCounterValue: 'tab-counter__value',
+  /** Модификатор открытого меню react-contextmenu: им тесты открывают меню чата */
+  contextMenuVisible: 'react-contextmenu--visible',
+  /** Пункт контекстного меню чата, класс библиотеки react-contextmenu */
+  chatContextMenuItem: 'react-contextmenu-item',
+  /**
+   * Классы строки пункта меню: отступы, шрифт и подсветка при наведении
+   * (фикстура chat-context-menu-open.html v3.70.53, живая страница v3.72.37)
+   */
+  chatContextMenuItemRow: ['row', 'dropdown-menu-item', 'press-box-on-top'],
+  /** Красный текст пункта меню, как у пункта удаления: им пункт архива показывает ошибку */
+  negativeText: 'text--negative',
+} as const
+
+/**
+ * Имена тегов, совпадающие с классами сайта: у клиента есть класс button, поэтому тест
+ * изоляции селекторов не отличает тег от класса, и имя живёт здесь
+ */
+export const siteTagNames = {
+  /** Кнопка: вкладка списка у клиента это button.tab, ей же сделаны свои кнопки функции */
+  button: 'button',
 } as const
 
 /** Имена атрибутов сайта, которые не начинаются с data- */
@@ -261,6 +315,8 @@ export const siteAttributeNames = {
 export const siteCustomPropertyNames = {
   /** Акцентный цвет клиента: точка непрочитанных у спрятанной колонки, полоса тредов с упоминанием */
   buttonPrimary: '--button-primary',
+  /** Цвет невыбранной вкладки списка (правило клиента .tab, разведка v3.72.37) */
+  textSecondary: '--text-secondary',
   /**
    * Отступ сверху центральной колонки: сайт вычитает его же из высоты .layout-pane__body
    * (разведка живой страницы v3.70.x: :root задаёт 16px, .layout-pane берёт его в padding-top,

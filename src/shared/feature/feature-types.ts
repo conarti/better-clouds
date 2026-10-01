@@ -39,7 +39,28 @@ export interface FeatureChecklistOption {
   resolveSelectedValues(storedValue: unknown): readonly string[]
 }
 
-export type FeaturePopupOption = FeatureChecklistOption
+/**
+ * Вид опции попапа: число сохранённых значений и кнопка очистки списка. Сами значения
+ * не показываются: это идентификаторы, человеку они ничего не говорят
+ */
+export const FEATURE_OPTION_CLEARABLE_LIST_KIND = 'feature-option-clearable-list'
+
+/** Опция попапа: сколько значений в сохранённом списке и кнопка, которая его очищает */
+export interface FeatureClearableListOption {
+  readonly kind: typeof FEATURE_OPTION_CLEARABLE_LIST_KIND
+  /** Ключ списка в хранимом значении функции, кнопка пишет туда пустой список */
+  readonly optionKey: string
+  readonly title: string
+  readonly clearButtonText: string
+  /** Подсказка при пустом списке */
+  readonly emptyText: string
+  /** Текст о числе значений в списке */
+  describeCount(valueCount: number): string
+  /** Значения списка из хранимого значения функции, интерпретирует владелец схемы */
+  resolveValues(storedValue: unknown): readonly string[]
+}
+
+export type FeaturePopupOption = FeatureChecklistOption | FeatureClearableListOption
 
 /** Схема хранения функции из необязательного settings.ts: безопасна для попапа */
 export interface FeatureSettingsDefinition {

@@ -5,7 +5,9 @@ import FeatureSettingsList from './FeatureSettingsList.vue'
 import {
   DISCOVERED_VALUES_SOURCE,
   FEATURE_OPTION_CHECKLIST_KIND,
+  FEATURE_OPTION_CLEARABLE_LIST_KIND,
   type FeatureChecklistOption,
+  type FeatureClearableListOption,
   type FeatureMeta,
   type FeatureSettingsDefinition,
 } from '@/shared/feature/feature-types'
@@ -123,5 +125,63 @@ describe('FeatureSettingsList с опциями функции', () => {
     expect(wrapper.emitted(UPDATE_OPTIONS_EVENT)).toEqual([
       [STUB_FEATURE_META.id, { [OPTION_KEY]: [SECOND_VALUE] }],
     ])
+  })
+})
+
+const CLEARABLE_OPTION_KEY = 'storedStubIds'
+const CLEAR_BUTTON_SELECTOR = '.feature-options__button'
+const CLEAR_BUTTON_TEXT = 'Очистить'
+const CLEARABLE_EMPTY_TEXT = 'Список пуст'
+
+const CLEARABLE_LIST_OPTION: FeatureClearableListOption = {
+  kind: FEATURE_OPTION_CLEARABLE_LIST_KIND,
+  optionKey: CLEARABLE_OPTION_KEY,
+  title: 'Список',
+  clearButtonText: CLEAR_BUTTON_TEXT,
+  emptyText: CLEARABLE_EMPTY_TEXT,
+  describeCount: (valueCount) => `В списке: ${valueCount}`,
+  resolveValues(storedValue) {
+    const { storedStubIds } = (storedValue ?? {}) as { storedStubIds?: string[] }
+    return storedStubIds ?? []
+  },
+}
+
+function mountClearablePanel(storedValue: unknown, disabled = false) {
+  return mount(FeatureOptionsPanel, {
+    props: {
+      options: [CLEARABLE_LIST_OPTION],
+      storedValue,
+      discoveredValues: DISCOVERED_VALUES,
+      disabled,
+    },
+  })
+}
+
+describe('FeatureOptionsPanel, очищаемый список', () => {
+  it('показывает число значений, а не сами значения', () => {
+    const wrapper = mountClearablePanel({
+      enabled: true,
+      [CLEARABLE_OPTION_KEY]: [FIRST_VALUE, SECOND_VALUE],
+    })
+
+    expect(wrapper.text()).toContain('В списке: 2')
+    expect(wrapper.text()).not.toContain(FIRST_VALUE)
+  })
+
+  it('кнопка очистки отдаёт пустой список', async () => {
+    const wrapper = mountClearablePanel({ enabled: true, [CLEARABLE_OPTION_KEY]: [FIRST_VALUE] })
+
+    await wrapper.get(CLEAR_BUTTON_SELECTOR).trigger('click')
+
+    expect(wrapper.emitted(UPDATE_OPTIONS_EVENT)).toEqual([[{ [CLEARABLE_OPTION_KEY]: [] }]])
+  })
+
+  it('пустой список даёт подсказку без кнопки, до загрузки кнопка недоступна', () => {
+    const emptyWrapper = mountClearablePanel({ enabled: true })
+    expect(emptyWrapper.text()).toContain(CLEARABLE_EMPTY_TEXT)
+    expect(emptyWrapper.find(CLEAR_BUTTON_SELECTOR).exists()).toBe(false)
+
+    const disabledWrapper = mountClearablePanel({ [CLEARABLE_OPTION_KEY]: [FIRST_VALUE] }, true)
+    expect(disabledWrapper.get(CLEAR_BUTTON_SELECTOR).attributes('disabled')).toBeDefined()
   })
 })

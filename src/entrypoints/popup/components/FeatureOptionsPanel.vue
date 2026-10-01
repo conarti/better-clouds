@@ -2,7 +2,9 @@
 import ToggleSwitch from '@/shared/ui/ToggleSwitch.vue'
 import {
   FEATURE_OPTION_CHECKLIST_KIND,
+  FEATURE_OPTION_CLEARABLE_LIST_KIND,
   type FeatureChecklistOption,
+  type FeatureClearableListOption,
   type FeaturePopupOption,
 } from '@/shared/feature/feature-types'
 import type { FeatureSettingsOptions } from '@/shared/settings/feature-settings'
@@ -42,6 +44,10 @@ function setValueSelected(
     ),
   })
 }
+
+function clearValues(option: FeatureClearableListOption): void {
+  emit('update:options', { [option.optionKey]: [] })
+}
 </script>
 
 <template>
@@ -68,6 +74,22 @@ function setValueSelected(
         </p>
       </details>
     </li>
+    <li v-else-if="option.kind === FEATURE_OPTION_CLEARABLE_LIST_KIND" class="feature-options">
+      <div class="feature-options__details">
+        <p class="feature-options__summary">{{ option.title }}</p>
+        <p v-if="option.resolveValues(storedValue).length === 0" class="feature-options__hint">
+          {{ option.emptyText }}
+        </p>
+        <div v-else class="feature-options__row">
+          <span class="feature-options__label">
+            {{ option.describeCount(option.resolveValues(storedValue).length) }}
+          </span>
+          <button class="feature-options__button" :disabled="disabled" @click="clearValues(option)">
+            {{ option.clearButtonText }}
+          </button>
+        </div>
+      </div>
+    </li>
   </template>
 </template>
 
@@ -84,6 +106,7 @@ function setValueSelected(
 }
 
 .feature-options__summary {
+  margin: 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--secondary-text-color);
@@ -112,6 +135,22 @@ function setValueSelected(
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.feature-options__button {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--separator-color);
+  border-radius: 6px;
+  background-color: var(--badge-background-color);
+  color: var(--text-color);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.feature-options__button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .feature-options__hint {
