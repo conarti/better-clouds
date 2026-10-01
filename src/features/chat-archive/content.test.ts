@@ -14,7 +14,11 @@ import {
   REACT_FIBER_PROPERTY_PREFIX,
 } from '@/shared/site/site-constants'
 import { loadFixture } from '@@/tests/helpers/load-fixture'
-import { buildArchiveStylesheet, createArchiveViewAttributeName } from './archive-stylesheet'
+import {
+  buildArchiveStylesheet,
+  createArchiveViewAttributeName,
+  createLoadingMoreAttributeName,
+} from './archive-stylesheet'
 import {
   CHAT_ID_ATTRIBUTE_NAME,
   findReactChatId,
@@ -25,8 +29,11 @@ import featureContent from './content'
 import { ARCHIVE_ITEM_TEXT, UNARCHIVE_ITEM_TEXT } from './context-menu-item'
 import featureMeta from './meta'
 import { featureSettings, resolveArchivedChatIds } from './settings'
+import { LOAD_MORE_BUTTON_CLASS_NAME } from './styles'
 
 const ALL_CHATS_FIXTURE_FILE_NAME = 'layout-all-chats.html'
+const THREADS_TAB_FIXTURE_FILE_NAME = 'layout-threads-tab.html'
+const USER_TAGS_FIXTURE_FILE_NAME = 'layout-user-tags.html'
 const FIBER_PROPERTY_NAME = `${REACT_FIBER_PROPERTY_PREFIX}stub`
 const FIRST_CHAT_ID = '0a1b2c3d-0000-4000-8000-000000000001'
 const SECOND_CHAT_ID = '0a1b2c3d-0000-4000-8000-000000000002'
@@ -36,6 +43,7 @@ const ELEMENT_TAG_NAME = 'div'
 const ENABLED_ATTRIBUTE_VALUE = ''
 const FEATURE_ATTRIBUTE_NAME = createFeatureAttributeName(featureMeta.id)
 const ARCHIVE_VIEW_ATTRIBUTE_NAME = createArchiveViewAttributeName(featureMeta.id)
+const LOADING_MORE_ATTRIBUTE_NAME = createLoadingMoreAttributeName(featureMeta.id)
 const FOREIGN_MARKER_VALUE = `${featureMeta.id}:foreign-instance`
 const ARCHIVE_TAB_TEXT = 'Архив'
 const ARCHIVE_FULL_TEXT_FRAGMENT = 'Архив заполнен'
@@ -45,6 +53,15 @@ const CONTEXT_MENU_EVENT_NAME = 'contextmenu'
 const CHAT_ENTRY_INDEX_WITH_UNREAD = 1
 const CHAT_ENTRY_INDEX_WITHOUT_UNREAD = 2
 const QUIET_PERIOD_MILLISECONDS = 50
+const ALL_CHATS_TAB_INDEX = 0
+const THREADS_TAB_INDEX = 2
+const MENTIONED_TAB_INDEX = 3
+const USER_TAG_TAB_INDEX = 4
+const SCROLLER_CONTENT_HEIGHT = 900
+const FRAME_MILLISECONDS = 20
+const LOAD_MORE_TIMEOUT_MILLISECONDS = 3000
+const INVALID_CHAT_ID = 'chat id with spaces'
+const OWNED_ELEMENT_SELECTOR = `[${FEATURE_OWNED_ELEMENT_ATTRIBUTE_NAME}]`
 
 interface FiberStub {
   key: unknown
@@ -182,10 +199,10 @@ describe('buildArchiveStylesheet', () => {
     expect(stylesheet.match(/\{/g)).toHaveLength(1)
   })
 
-  it('все id в одном правиле скрытия, без вложенного :has()', () => {
+  it('все id в одном правиле на каждое правило, без вложенного :has()', () => {
     const stylesheet = buildArchiveStylesheet(featureMeta.id, [FIRST_CHAT_ID, SECOND_CHAT_ID])
-    expect(stylesheet.match(/\{/g)).toHaveLength(2)
-    expect(stylesheet.split(FIRST_CHAT_ID)).toHaveLength(3)
+    expect(stylesheet.match(/\{/g)).toHaveLength(3)
+    expect(stylesheet.split(FIRST_CHAT_ID)).toHaveLength(4)
     expect(stylesheet).toContain(SECOND_CHAT_ID)
     expect(findNestedHasSelector(stylesheet)).toEqual([])
   })
@@ -243,22 +260,52 @@ describe('chat-archive mount', () => {
     return lastTab
   }
 
-  beforeEach(() => {
-    fakeBrowser.reset()
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    document.body.innerHTML = loadFixture(ALL_CHATS_FIXTURE_FILE_NAME)
+  function loadChatListFixture(fixtureFileName: string): void {
+    document.body.innerHTML = loadFixture(fixtureFileName)
     findChatEntries().forEach((entry, index) => {
       entry.setAttribute(
         CHAT_ID_ATTRIBUTE_NAME,
         `${FIRST_CHAT_ID.slice(0, -3)}${String(index).padStart(3, '0')}`,
       )
     })
+  }
+
+  function selectTab(tabIndex: number): void {
+    const tabButtons = [
+      ...document.querySelectorAll(
+        `${siteSelectors.chatListTabsList} ${siteSelectors.chatListTabButton}`,
+      ),
+    ]
+    tabButtons.forEach((tabButton, index) => {
+      tabButton.classList.toggle(siteClassNames.chatListTabSelected, index === tabIndex)
+    })
+  }
+
+  async function expectNoMenuItem(entry: Element): Promise<void> {
+    const contextMenu = openContextMenu(entry)
+    await waitForFrames()
+    expect(contextMenu.querySelector(OWNED_ELEMENT_SELECTOR)).toBeNull()
+  }
+
+  async function expectMenuItem(entry: Element): Promise<void> {
+    const contextMenu = openContextMenu(entry)
+    await vi.waitFor(() => {
+      expect(contextMenu.lastElementChild?.textContent).toBe(ARCHIVE_ITEM_TEXT)
+    })
+  }
+
+  beforeEach(() => {
+    fakeBrowser.reset()
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    loadChatListFixture(ALL_CHATS_FIXTURE_FILE_NAME)
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     unmountFeature()
     consoleWarnSpy.mockRestore()
     document.documentElement.removeAttribute(ARCHIVE_VIEW_ATTRIBUTE_NAME)
+    document.documentElement.removeAttribute(LOADING_MORE_ATTRIBUTE_NAME)
     document.head.innerHTML = ''
     document.body.innerHTML = ''
   })
@@ -291,6 +338,53 @@ describe('chat-archive mount', () => {
       expect(await readArchivedChatIds()).toEqual([])
     })
     window.removeEventListener(REACT_CONTEXTMENU_HIDE_EVENT_NAME, hideListener)
+  })
+
+  it('пункт меню есть у чатов на «Все чаты» и на вкладке тега', async () => {
+    await mountFeature()
+    await expectMenuItem(findChatEntries()[0] as Element)
+
+    unmountFeature()
+    loadChatListFixture(USER_TAGS_FIXTURE_FILE_NAME)
+    selectTab(USER_TAG_TAB_INDEX)
+    await mountFeature()
+    await expectMenuItem(findChatEntries()[0] as Element)
+  })
+
+  it('пункта меню нет на вкладках «Обсуждения» и «Упоминания»', async () => {
+    await mountFeature()
+    const entry = findChatEntries()[0] as Element
+    selectTab(THREADS_TAB_INDEX)
+    await expectNoMenuItem(entry)
+    selectTab(MENTIONED_TAB_INDEX)
+    await expectNoMenuItem(entry)
+  })
+
+  it('пункта меню нет у записи треда даже на «Все чаты»', async () => {
+    loadChatListFixture(THREADS_TAB_FIXTURE_FILE_NAME)
+    selectTab(ALL_CHATS_TAB_INDEX)
+    await mountFeature()
+    const threadEntry = findChatEntries()[0] as Element
+    expect(threadEntry.querySelector(siteSelectors.chatListEntryThreadExtra)).not.toBeNull()
+    await expectNoMenuItem(threadEntry)
+  })
+
+  it('id недопустимого вида не пишется и не попадает в стили', async () => {
+    await mountFeature()
+    const entry = findChatEntries()[0] as Element
+    entry.setAttribute(CHAT_ID_ATTRIBUTE_NAME, INVALID_CHAT_ID)
+    const contextMenu = openContextMenu(entry)
+    await vi.waitFor(() => {
+      expect(contextMenu.lastElementChild?.textContent).toBe(ARCHIVE_ITEM_TEXT)
+    })
+    ;(contextMenu.lastElementChild as HTMLElement).click()
+
+    await vi.waitFor(() => {
+      expect(consoleWarnSpy).toHaveBeenCalled()
+    })
+    expect(await readArchivedChatIds()).toEqual([])
+    expect(await settingsItem().getValue()).not.toHaveProperty('archivedChatIds')
+    expect(document.head.textContent).not.toContain(INVALID_CHAT_ID)
   })
 
   it('при переполнении квоты пункт показывает ошибку и ничего не пишет', async () => {
@@ -357,6 +451,90 @@ describe('chat-archive mount', () => {
     ;(requireElement(siteSelectors.chatListAllChatsTabButton) as HTMLElement).click()
     expect(document.documentElement.hasAttribute(ARCHIVE_VIEW_ATTRIBUTE_NAME)).toBe(false)
     expect(archiveTab.classList.contains(siteClassNames.chatListTabSelected)).toBe(false)
+  })
+
+  describe('«Загрузить ещё»', () => {
+    let scrollTopValue = 0
+
+    function findLoadMoreButton(): HTMLElement | null {
+      return document.querySelector(`${siteSelectors.chatList} > .${LOAD_MORE_BUTTON_CLASS_NAME}`)
+    }
+
+    /** happy-dom не считает раскладку: высота и прокрутка списка задаются вручную */
+    function stubScroller(): void {
+      scrollTopValue = 0
+      const scroller = requireElement(siteSelectors.chatListScroller)
+      Object.defineProperty(scroller, 'scrollHeight', {
+        configurable: true,
+        get: () => SCROLLER_CONTENT_HEIGHT,
+      })
+      Object.defineProperty(scroller, 'scrollTop', {
+        configurable: true,
+        get: () => scrollTopValue,
+        set: (nextScrollTop: number) => {
+          scrollTopValue = nextScrollTop
+        },
+      })
+    }
+
+    async function openArchiveViewAndLoadMore(): Promise<void> {
+      stubScroller()
+      await mountFeature()
+      vi.useFakeTimers()
+      ;(findArchiveTab() as HTMLElement).click()
+      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+      const loadMoreButton = findLoadMoreButton()
+      if (loadMoreButton === null) {
+        throw new Error('Нет кнопки «Загрузить ещё»')
+      }
+      loadMoreButton.click()
+      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+    }
+
+    function isLoadingMore(): boolean {
+      return document.documentElement.hasAttribute(LOADING_MORE_ATTRIBUTE_NAME)
+    }
+
+    it('кнопка есть только в режиме архива', async () => {
+      await mountFeature()
+      await waitForFrames()
+      expect(findLoadMoreButton()).toBeNull()
+
+      ;(findArchiveTab() as HTMLElement).click()
+      await vi.waitFor(() => {
+        expect(findLoadMoreButton()).not.toBeNull()
+      })
+
+      ;(requireElement(siteSelectors.chatListAllChatsTabButton) as HTMLElement).click()
+      await vi.waitFor(() => {
+        expect(findLoadMoreButton()).toBeNull()
+      })
+    })
+
+    it('клик снимает скрытие и прокручивает список вниз, новая страница возвращает режим', async () => {
+      await openArchiveViewAndLoadMore()
+      expect(isLoadingMore()).toBe(true)
+      expect(scrollTopValue).toBe(SCROLLER_CONTENT_HEIGHT)
+
+      const chatList = requireElement(siteSelectors.chatList)
+      const loadedWrapper = (findChatEntries()[0] as Element).parentElement?.cloneNode(true)
+      chatList.append(loadedWrapper as Node)
+      await vi.advanceTimersByTimeAsync(FRAME_MILLISECONDS)
+
+      expect(isLoadingMore()).toBe(false)
+      expect(scrollTopValue).toBe(0)
+      expect(document.documentElement.hasAttribute(ARCHIVE_VIEW_ATTRIBUTE_NAME)).toBe(true)
+    })
+
+    it('без новой страницы режим возвращается по таймауту', async () => {
+      await openArchiveViewAndLoadMore()
+      await vi.advanceTimersByTimeAsync(LOAD_MORE_TIMEOUT_MILLISECONDS - 2 * FRAME_MILLISECONDS)
+      expect(isLoadingMore()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(2 * FRAME_MILLISECONDS)
+      expect(isLoadingMore()).toBe(false)
+      expect(scrollTopValue).toBe(0)
+    })
   })
 
   it('выключение убирает узлы своей копии, чужие и список в sync остаются', async () => {

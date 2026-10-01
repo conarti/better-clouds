@@ -16,7 +16,7 @@ export const APPROXIMATE_ARCHIVE_CAPACITY = 200
  * Допустимый вид id: буквы, цифры и дефис. Значение попадает в селектор CSS в кавычках,
  * поэтому всё прочее отбрасывается и экранирование не требуется
  */
-const CHAT_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/
+export const CHAT_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 
 const ARCHIVE_OPTION_TITLE = 'Архив'
 const CLEAR_ARCHIVE_TEXT = 'Вернуть все'

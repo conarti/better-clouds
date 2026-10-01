@@ -9,6 +9,9 @@ import { CHAT_ID_ATTRIBUTE_NAME } from './chat-id-marker'
 const ARCHIVE_VIEW_STATE_NAME = 'archive-view'
 const LOADING_MORE_STATE_NAME = 'loading-more'
 
+/** Обычное значение display обёртки записи у клиента (разведка живой страницы v3.72.37) */
+const CHAT_LIST_WRAPPER_DISPLAY = 'block'
+
 /** Признак на корне: выбрана вкладка «Архив», список показывает только архивные чаты */
 export function createArchiveViewAttributeName(featureId: string): string {
   return createFeatureStateAttributeName(featureId, ARCHIVE_VIEW_STATE_NAME)
@@ -28,7 +31,10 @@ export function createLoadingMoreAttributeName(featureId: string): string {
  * обёртка записи это общий класс react-contextmenu. При непустом поиске правила не совпадают,
  * поэтому архивные чаты находятся поиском. В режиме архива наоборот скрыто всё, кроме
  * архивных; при пустом списке id :has() без аргументов недопустим, поэтому для него
- * отдельное правило, которое в режиме архива скрывает все записи
+ * отдельное правило, которое в режиме архива скрывает все записи. Третье правило в режиме
+ * архива показывает архивные записи, которые скрыли бы другие функции (hide-catalog-bots
+ * скрывает каталожных ботов на «Все чаты»): условие активной «Все чаты» дублирует условие
+ * режима архива и поднимает специфичность выше правила hide-catalog-bots
  */
 export function buildArchiveStylesheet(
   featureId: string,
@@ -39,6 +45,7 @@ export function buildArchiveStylesheet(
   const loadingMore = `[${createLoadingMoreAttributeName(featureId)}]`
   const emptySearch = `:has(${siteSelectors.chatListSearchInputEmpty})`
   const chatListWrappers = `${siteSelectors.chatList} ${siteSelectors.chatListItemWrapper}`
+  const allChatsTabActive = `:has(${siteSelectors.chatListAllChatsTabActive})`
 
   if (archivedChatIds.length === 0) {
     return css`
@@ -58,6 +65,9 @@ export function buildArchiveStylesheet(
     }
     ${featureScope}${archiveView}:not(${loadingMore})${emptySearch} ${chatListWrappers}:not(:has(${archivedEntries})) {
       display: none;
+    }
+    ${featureScope}${archiveView}${allChatsTabActive}${emptySearch} ${chatListWrappers}:has(${archivedEntries}) {
+      display: ${CHAT_LIST_WRAPPER_DISPLAY};
     }
   `
 }

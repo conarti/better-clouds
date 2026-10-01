@@ -23,6 +23,7 @@ import featureMeta from './meta'
 import {
   APPROXIMATE_ARCHIVE_CAPACITY,
   ARCHIVED_CHAT_IDS_OPTION_KEY,
+  CHAT_ID_PATTERN,
   featureSettings,
   resolveArchivedChatIds,
 } from './settings'
@@ -67,6 +68,13 @@ const SAVE_FAILURE_TEXT = 'Не удалось сохранить'
 const ARCHIVE_FULL_MESSAGE = 'Архив не помещается в элемент storage.sync, чат не добавлен'
 const SAVE_FAILURE_MESSAGE = 'Не удалось сохранить архив чатов'
 const SETTINGS_READ_FAILURE_MESSAGE = 'Не удалось прочитать архив чатов, чаты не скрываются'
+const INVALID_CHAT_ID_MESSAGE = 'Id чата недопустимого вида, архив не изменён'
+
+/** Вкладки, где пункт меню доступен: «Все чаты» (в том числе режим архива) и теги */
+const CHAT_TABS_ACTIVE_SELECTOR = [
+  siteSelectors.chatListAllChatsTabActive,
+  siteSelectors.chatListUserTagTabActive,
+].join(', ')
 
 interface WatchedContainer {
   readonly current: () => Element | null
@@ -291,10 +299,32 @@ export default defineFeatureContent({
       refreshContextMenu()
     }
 
+    /**
+     * id чата под курсором для пункта меню. Архивируются только чаты: на вкладках «Обсуждения»,
+     * «Упоминания» и «Каталог» и для записей тредов пункта нет
+     */
+    function findContextMenuChatId(target: EventTarget | null): string | null {
+      if (
+        !(target instanceof Element) ||
+        documentRoot.querySelector(CHAT_TABS_ACTIVE_SELECTOR) === null
+      ) {
+        return null
+      }
+      const entry = target.closest(`${siteSelectors.chatList} ${siteSelectors.chatListEntry}`)
+      if (entry === null || entry.querySelector(siteSelectors.chatListEntryThreadExtra) !== null) {
+        return null
+      }
+      return entry.getAttribute(CHAT_ID_ATTRIBUTE_NAME)
+    }
+
     /** Переключает архив чата из меню. Новое сообщение архив не меняет: запись только здесь */
     async function toggleContextMenuChat(): Promise<void> {
       const chatId = contextMenuChatId
       if (chatId === null) {
+        return
+      }
+      if (!CHAT_ID_PATTERN.test(chatId)) {
+        logger.warn(INVALID_CHAT_ID_MESSAGE, chatId)
         return
       }
       let nextArchivedChatIds: readonly string[]
@@ -324,12 +354,7 @@ export default defineFeatureContent({
       documentRoot,
       CONTEXT_MENU_EVENT_NAME,
       (event) => {
-        const target = event.target
-        const entry =
-          target instanceof Element
-            ? target.closest(`${siteSelectors.chatList} ${siteSelectors.chatListEntry}`)
-            : null
-        contextMenuChatId = entry?.getAttribute(CHAT_ID_ATTRIBUTE_NAME) ?? null
+        contextMenuChatId = findContextMenuChatId(event.target)
         menuErrorText = null
         lifecycle.requestAnimationFrame(refreshContextMenu)
       },

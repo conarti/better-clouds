@@ -101,6 +101,13 @@ export const siteSelectors = {
   chatListThreadsTabActive:
     '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:nth-child(3) > .tab--selected',
   /**
+   * Активная вкладка пользовательского тега: теги идут после четырёх системных вкладок и
+   * отличаются от них только позицией. Своя вкладка «Архив» это кнопка без обёртки, поэтому
+   * под селектор не попадает (разведка живой страницы v3.72.37)
+   */
+  chatListUserTagTabActive:
+    '.layout-pane__search .tabs__list > .react-contextmenu-wrapper:nth-child(n+5) > .tab--selected',
+  /**
    * Обёртка вкладки в списке вкладок, прямой ребёнок списка. У обёртки display: contents,
    * поэтому элементом flex-списка выступает кнопка внутри неё (разведка живой страницы v3.72.37)
    */
@@ -161,6 +168,11 @@ export const siteSelectors = {
    * модификатор --muted при «не беспокоить» (фикстура layout-all-chats.html v3.70.53)
    */
   chatListEntryUnreadCounter: '.chat-list-entry__meta > .chat-list-entry-counter',
+  /**
+   * Признак записи треда: блок thread-extra есть только у тредов
+   * (фикстура layout-threads-tab.html v3.72.37)
+   */
+  chatListEntryThreadExtra: '.chat-list-entry__thread-extra',
   /** Счётчик в блоке meta записи треда: непрочитанные или упоминания */
   threadListEntryCounter:
     '.chat-list-entry__thread-extra .chat-list-entry__meta > .chat-list-entry-counter',
