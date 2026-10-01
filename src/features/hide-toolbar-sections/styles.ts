@@ -3,9 +3,10 @@ import {
   createFeatureScopeSelector,
   createFeatureStateAttributeName,
 } from '@/shared/feature/feature-scope'
+import { NOTIFICATION_DOT_VISIBILITY_PROPERTY } from '@/shared/feature/shared-custom-properties'
 import { siteSelectors } from '@/shared/site/selectors'
 import featureMeta from './meta'
-import { TOOLBAR_SECTIONS } from './settings'
+import { BELL_COUNTER_SECTION_ID, BELL_SECTION_ID, TOOLBAR_SECTIONS } from './settings'
 
 const featureScope = createFeatureScopeSelector(featureMeta.id)
 
@@ -20,13 +21,19 @@ export const SECTION_SELECTOR_BY_ID: Readonly<Record<string, string>> = {
   calls: siteSelectors.toolbarSectionCalls,
   smartapps: siteSelectors.toolbarSectionSmartapps,
   'smartapps-block': siteSelectors.toolbarSmartappSectionBlock,
+  [BELL_COUNTER_SECTION_ID]: siteSelectors.toolbarNotificationsButtonBadge,
+  [BELL_SECTION_ID]: siteSelectors.toolbarNotificationsButton,
 }
+
+const HIDDEN_DOT_VISIBILITY = '0'
 
 /**
  * Каждая секция прячется своим признаком состояния на корне: контент-скрипт ставит
  * атрибут data-better-clouds-hide-toolbar-sections_<секция> для каждой скрытой секции,
- * runtime убирает все признаки при отключении функции. Секций всего шесть, поэтому
- * правила пишутся без @media-трюков
+ * runtime убирает все признаки при отключении функции. Секций немного, поэтому
+ * правила пишутся без @media-трюков. Скрытый колокольчик или счётчик гасит точку
+ * непрочитанных у autohide-toolbar через общее свойство: бейдж остаётся в разметке,
+ * и точка без этого продолжала бы на него реагировать
  */
 export const featureStyles = css`
   ${TOOLBAR_SECTIONS.map(
@@ -36,4 +43,8 @@ export const featureStyles = css`
       }
     `,
   ).join('\n')}
+  ${featureScope}[${createFeatureStateAttributeName(featureMeta.id, BELL_COUNTER_SECTION_ID)}],
+  ${featureScope}[${createFeatureStateAttributeName(featureMeta.id, BELL_SECTION_ID)}] {
+    ${NOTIFICATION_DOT_VISIBILITY_PROPERTY}: ${HIDDEN_DOT_VISIBILITY};
+  }
 `

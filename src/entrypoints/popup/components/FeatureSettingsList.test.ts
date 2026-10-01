@@ -2,7 +2,10 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import FeatureSettingsList from './FeatureSettingsList.vue'
 import { featureMetaRegistry } from '@/features/registry'
-import { TOOLBAR_SECTIONS } from '@/features/hide-toolbar-sections/settings'
+import {
+  DEFAULT_HIDDEN_SECTION_IDS,
+  TOOLBAR_SECTIONS,
+} from '@/features/hide-toolbar-sections/settings'
 import type { FeatureMeta } from '@/shared/feature/feature-types'
 import type { FeatureSettingsStoredValue } from '@/shared/settings/feature-settings'
 
@@ -15,6 +18,7 @@ const STUB_FEATURE_META: FeatureMeta = {
 
 const FEATURE_METAS: readonly FeatureMeta[] = [...featureMetaRegistry, STUB_FEATURE_META]
 const ARIA_CHECKED_ATTRIBUTE = 'aria-checked'
+const EXPECTED_TOOLBAR_SECTION_COUNT = 8
 const UPDATE_ENABLED_EVENT = 'update:enabled'
 const UPDATE_HIDDEN_EVENT = 'update:hidden'
 
@@ -71,14 +75,15 @@ describe('FeatureSettingsList', () => {
     }
   })
 
-  it('по умолчанию все секции тулбара скрыты', () => {
+  it('по умолчанию скрыты шесть прежних секций тулбара, колокольчик и его счётчик видны', () => {
     const wrapper = mountList(true, { 'hide-toolbar-sections': true })
 
+    expect(TOOLBAR_SECTIONS).toHaveLength(EXPECTED_TOOLBAR_SECTION_COUNT)
     for (const section of TOOLBAR_SECTIONS) {
       expect(
         switchByLabel(wrapper, section.title).attributes(ARIA_CHECKED_ATTRIBUTE),
         section.title,
-      ).toBe('false')
+      ).toBe(DEFAULT_HIDDEN_SECTION_IDS.includes(section.id) ? 'false' : 'true')
     }
   })
 

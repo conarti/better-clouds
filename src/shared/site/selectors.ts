@@ -45,8 +45,27 @@ export const siteSelectors = {
    * и у вспомогательных узлов контекстного меню внутри записей списка
    */
   toolbar: '.layout-pane > .toolbar',
-  /** Бейдж непрочитанных у колокольчика; при нуле клиент его не рендерит */
-  toolbarNotificationBadge: '.icon-with-counter__badge',
+  /**
+   * Кнопка колокольчика: первый .icon-with-counter нижней колонки тулбара, второй это кнопка
+   * сворачивания колонки (разведка живой страницы v3.72.37 и фикстуры v3.70.53)
+   */
+  toolbarNotificationsButton:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:first-child',
+  /** Кнопка сворачивания колонки: второй .icon-with-counter нижней колонки, бейджа у неё нет */
+  toolbarCollapseButton:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:nth-child(2)',
+  /**
+   * Бейдж непрочитанных именно у колокольчика, а не у соседней кнопки сворачивания;
+   * при нуле клиент его не рендерит
+   */
+  toolbarNotificationsButtonBadge:
+    '.layout-pane > .toolbar > .column:nth-of-type(8) > .icon-with-counter:first-child > .icon-with-counter__badge',
+  /**
+   * Тот же бейдж, но от самого тулбара: для :has(), где абсолютный путь через .layout-pane
+   * не работает, так как внутри :has() селектор отсчитывается от тулбара
+   */
+  toolbarNotificationsButtonBadgeFromToolbar:
+    '> .column:nth-of-type(8) > .icon-with-counter:first-child > .icon-with-counter__badge',
   /**
    * Открытое меню, вызванное из колонки навигации. Порталов у таких меню нет, поэтому
    * достаточно уточнения через .toolbar; контекстное меню чата под этот селектор не попадает

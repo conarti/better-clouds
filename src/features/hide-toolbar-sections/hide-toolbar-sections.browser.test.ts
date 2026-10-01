@@ -9,10 +9,18 @@ import {
 } from '@@/tests/helpers/feature-dom'
 import { loadFixture } from '@@/tests/helpers/load-fixture'
 import featureMeta from './meta'
-import { TOOLBAR_SECTIONS, TOOLBAR_SECTION_IDS } from './settings'
+import {
+  BELL_COUNTER_SECTION_ID,
+  BELL_SECTION_ID,
+  TOOLBAR_SECTIONS,
+  TOOLBAR_SECTION_IDS,
+} from './settings'
 import { featureStyles, SECTION_SELECTOR_BY_ID } from './styles'
 
-const TOOLBAR_FIXTURE_FILE_NAME = 'toolbar-notifications-none.html'
+const TOOLBAR_FIXTURE_FILE_NAME = 'toolbar-notifications-unread.html'
+const NO_BADGE_TOOLBAR_FIXTURE_FILE_NAME = 'toolbar-notifications-none.html'
+const CURRENT_CLIENT_FIXTURE_FILE_NAME = 'layout-user-tags.html'
+const COLLAPSE_BUTTON_SELECTOR = siteSelectors.toolbarCollapseButton
 
 /**
  * Высота секций со снятой живой страницы v3.72.37: тест проверяет не только display, но и
@@ -111,6 +119,50 @@ describe('hide-toolbar-sections', () => {
       getComputedStyle(findRequiredElement(fixture.container, siteSelectors.toolbarBottomColumn))
         .display,
     ).not.toBe('none')
+  })
+
+  it('прячет только бейдж колокольчика при скрытом счётчике, кнопка остаётся', () => {
+    applyHiddenSections([BELL_COUNTER_SECTION_ID])
+    expect(getComputedStyle(sectionElement(BELL_COUNTER_SECTION_ID)).display).toBe('none')
+    expect(getComputedStyle(sectionElement(BELL_SECTION_ID)).display).not.toBe('none')
+  })
+
+  it('прячет кнопку колокольчика целиком, не трогая кнопку сворачивания колонки', () => {
+    applyHiddenSections([BELL_SECTION_ID])
+    expect(getComputedStyle(sectionElement(BELL_SECTION_ID)).display).toBe('none')
+    expect(
+      getComputedStyle(findRequiredElement(fixture.container, COLLAPSE_BUTTON_SELECTOR)).display,
+    ).not.toBe('none')
+  })
+
+  it('не прячет колокольчик и счётчик, пока их признаки не поставлены', () => {
+    applyHiddenSections(['main'])
+    expect(getComputedStyle(sectionElement(BELL_COUNTER_SECTION_ID)).display).not.toBe('none')
+    expect(getComputedStyle(sectionElement(BELL_SECTION_ID)).display).not.toBe('none')
+  })
+
+  it('находит колокольчик и кнопку сворачивания на разметке без бейджа и текущей версии клиента', () => {
+    for (const fixtureFileName of [
+      NO_BADGE_TOOLBAR_FIXTURE_FILE_NAME,
+      CURRENT_CLIENT_FIXTURE_FILE_NAME,
+    ]) {
+      fixture.unmount()
+      fixture = mountFeatureFixture({
+        featureId: featureMeta.id,
+        featureStyles,
+        fixtureHtmlList: [loadFixture(fixtureFileName)],
+        siteStyles: siteToolbarStyles,
+        wrapInLayoutPane: true,
+      })
+      applyHiddenSections([BELL_SECTION_ID])
+      expect(getComputedStyle(sectionElement(BELL_SECTION_ID)).display, fixtureFileName).toBe(
+        'none',
+      )
+      expect(
+        getComputedStyle(findRequiredElement(fixture.container, COLLAPSE_BUTTON_SELECTOR)).display,
+        fixtureFileName,
+      ).not.toBe('none')
+    }
   })
 
   it('возвращает все секции при отключении функции', () => {

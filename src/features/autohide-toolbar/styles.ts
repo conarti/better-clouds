@@ -3,6 +3,7 @@ import {
   createFeatureScopeSelector,
   createFeatureStateAttributeName,
 } from '@/shared/feature/feature-scope'
+import { NOTIFICATION_DOT_VISIBILITY_PROPERTY } from '@/shared/feature/shared-custom-properties'
 import { siteCustomPropertyNames, siteSelectors } from '@/shared/site/selectors'
 import featureMeta from './meta'
 
@@ -45,6 +46,7 @@ const TOOLBAR_HIDDEN_OFFSET_PROPERTY = '--better-clouds-toolbar-hidden-offset'
 const TOOLBAR_SHOW_DURATION_PROPERTY = '--better-clouds-toolbar-show-duration'
 const TOOLBAR_HIDE_DURATION_PROPERTY = '--better-clouds-toolbar-hide-duration'
 const TOOLBAR_HIDE_DELAY_PROPERTY = '--better-clouds-toolbar-hide-delay'
+const NOTIFICATION_DOT_DEFAULT_VISIBILITY = '1'
 const NOTIFICATION_DOT_COLOR_PROPERTY = '--better-clouds-notification-dot-color'
 const NOTIFICATION_DOT_DURATION_PROPERTY = '--better-clouds-notification-dot-duration'
 
@@ -157,8 +159,8 @@ export const featureStyles = css`
     transition-timing-function: ease-out;
     transition-duration: var(${NOTIFICATION_DOT_DURATION_PROPERTY}) !important;
   }
-  ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationBadge})::before {
-    opacity: 1;
+  ${featureScope} ${siteSelectors.toolbar}:has(${siteSelectors.toolbarNotificationsButtonBadgeFromToolbar})::before {
+    opacity: var(${NOTIFICATION_DOT_VISIBILITY_PROPERTY}, ${NOTIFICATION_DOT_DEFAULT_VISIBILITY});
   }
   ${expandedToolbarMarkerSelectorList} {
     opacity: 0;
