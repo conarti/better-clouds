@@ -5,7 +5,8 @@ import process from 'node:process'
 /**
  * Печатает сниппет обезличивания разметки для консоли DevTools.
  * Режим по умолчанию `clone` работает с копией узла и возвращает строку HTML,
- * режим `--in-place` применяет те же правила к живому DOM страницы и возвращает число.
+ * режим in-place применяет те же правила к живому DOM страницы, вместо удалённого источника
+ * ставит каждому `<img>` встроенную заглушку `data:image/svg+xml` и возвращает число.
  * Правила берутся из общего белого списка tests/fixtures/fixture-privacy-rules.json.
  */
 
@@ -27,7 +28,9 @@ const HREF_ATTRIBUTE_NAME = 'href'
 const HREF_ALLOWED_VALUE = '#'
 const PATH_ELEMENT_NAME = 'path'
 const PATH_DATA_ATTRIBUTE_NAME = 'd'
-const REMOVED_ATTRIBUTE_NAMES = ['src', 'srcset', 'poster']
+const IMAGE_ELEMENT_NAME = 'img'
+const SOURCE_ATTRIBUTE_NAME = 'src'
+const REMOVED_ATTRIBUTE_NAMES = [SOURCE_ATTRIBUTE_NAME, 'srcset', 'poster']
 const IDENTIFIER_ATTRIBUTE_NAMES = ['id', 'data-open-chat']
 const IDENTIFIER_ATTRIBUTE_PREFIX = 'data-rbd-'
 const FIXTURE_IDENTIFIER_PREFIX = 'fixture-id-'
@@ -44,6 +47,7 @@ const SEARCH_EDITOR_SELECTOR = '.search-filter-panel-input__editor'
 const SEARCH_QUERY_TEXT = 'Бот'
 const AVATAR_INITIALS_TEXT = 'АБ'
 const DEFAULT_PLACEHOLDER_PREFIX = 'Сообщение'
+const AVATAR_ANCESTOR_SELECTOR = '[class*="avatar"]'
 
 /**
  * Правила выбора заменителя для текстового узла: первый подошедший предок задаёт замену.
@@ -52,7 +56,7 @@ const DEFAULT_PLACEHOLDER_PREFIX = 'Сообщение'
 const PLACEHOLDER_RULES = [
   { ancestorSelector: SEARCH_EDITOR_SELECTOR, fixedText: SEARCH_QUERY_TEXT },
   { ancestorSelector: '[class*="initials"]', fixedText: AVATAR_INITIALS_TEXT },
-  { ancestorSelector: '[class*="avatar"]', fixedText: AVATAR_INITIALS_TEXT },
+  { ancestorSelector: AVATAR_ANCESTOR_SELECTOR, fixedText: AVATAR_INITIALS_TEXT },
   { ancestorSelector: '.layout-pane__search .tab', placeholderPrefix: 'Тег' },
   { ancestorSelector: '.chat-message__title-text', placeholderPrefix: 'Пользователь' },
   { ancestorSelector: '.service-card', placeholderPrefix: 'Приложение' },
@@ -64,6 +68,34 @@ const PLACEHOLDER_RULES = [
   { ancestorSelector: '.chats-list-header', placeholderPrefix: 'Организация' },
   { ancestorSelector: '.chat-context-menu', placeholderPrefix: 'Сообщение' },
 ]
+
+/**
+ * Заглушки картинок для режима in-place: серые глифы без текста и внешних ресурсов.
+ * Размер 32 по самому мелкому контейнеру без CSS-размера. Разметка кодируется при сборке:
+ * иначе решётка в цвете обрывает адрес, а пространство имён SVG оставит в атрибуте http-адрес
+ */
+const SVG_DATA_URI_PREFIX = 'data:image/svg+xml,'
+const PLACEHOLDER_SVG_OPENING_TAG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">'
+const PLACEHOLDER_SVG_CLOSING_TAG = '</svg>'
+const AVATAR_PLACEHOLDER_SVG_MARKUP = [
+  PLACEHOLDER_SVG_OPENING_TAG,
+  '<rect width="32" height="32" fill="#E4E6EB"/>',
+  '<circle cx="16" cy="12.5" r="5.5" fill="#B0B5BD"/>',
+  '<path d="M6 28c0-5.5 4.5-9 10-9s10 3.5 10 9z" fill="#B0B5BD"/>',
+  PLACEHOLDER_SVG_CLOSING_TAG,
+].join('')
+const PICTURE_PLACEHOLDER_SVG_MARKUP = [
+  PLACEHOLDER_SVG_OPENING_TAG,
+  '<rect width="32" height="32" rx="4" fill="#E4E6EB"/>',
+  '<circle cx="11" cy="11" r="3" fill="#B0B5BD"/>',
+  '<path d="M4 26l8-9 6 6 4-4 6 7z" fill="#B0B5BD"/>',
+  PLACEHOLDER_SVG_CLOSING_TAG,
+].join('')
+const AVATAR_PLACEHOLDER_SOURCE =
+  SVG_DATA_URI_PREFIX + encodeURIComponent(AVATAR_PLACEHOLDER_SVG_MARKUP)
+const PICTURE_PLACEHOLDER_SOURCE =
+  SVG_DATA_URI_PREFIX + encodeURIComponent(PICTURE_PLACEHOLDER_SVG_MARKUP)
 
 const CHAT_LIST_ENTRY_WRAPPER_SELECTOR = '.react-contextmenu-wrapper'
 const CHAT_LIST_ENTRY_SELECTOR = '.chat-list-entry'
@@ -146,6 +178,17 @@ function createFixturePlaceholderText(textNode, counters) {
 }
 
 /**
+ * Выбирает заглушку картинки: силуэт внутри аватара, иначе значок картинки
+ * @param {Element} imageElement
+ * @returns {string} адрес data: со встроенным SVG
+ */
+function selectFixtureImagePlaceholderSource(imageElement) {
+  return imageElement.closest(AVATAR_ANCESTOR_SELECTOR)
+    ? AVATAR_PLACEHOLDER_SOURCE
+    : PICTURE_PLACEHOLDER_SOURCE
+}
+
+/**
  * Обезличивает атрибуты одного элемента
  * @param {Element} element
  * @param {object} privacyRules
@@ -203,6 +246,12 @@ function anonymizeFixtureAttributes(element, privacyRules, counters, mode) {
     ) {
       element.removeAttribute(attributeName)
     }
+  }
+  /* После цикла: getAttributeNames отдаёт снимок, поэтому src и srcset уже удалены
+     в любом порядке, а новый src не попадает под удаление. В копии src остаётся удалённым,
+     его запрещает гейт приватности */
+  if (mode !== CLONE_MODE && element.localName === IMAGE_ELEMENT_NAME) {
+    element.setAttribute(SOURCE_ATTRIBUTE_NAME, selectFixtureImagePlaceholderSource(element))
   }
 }
 
@@ -350,6 +399,7 @@ const SNIPPET_FUNCTIONS = [
   isAllowedFixtureText,
   isStructuralFixtureAttributeName,
   createFixturePlaceholderText,
+  selectFixtureImagePlaceholderSource,
   anonymizeFixtureAttributes,
   anonymizeFixtureTree,
   trimFixtureChatListEntries,
@@ -365,6 +415,8 @@ const SNIPPET_CONSTANTS = {
   HREF_ALLOWED_VALUE,
   PATH_ELEMENT_NAME,
   PATH_DATA_ATTRIBUTE_NAME,
+  IMAGE_ELEMENT_NAME,
+  SOURCE_ATTRIBUTE_NAME,
   REMOVED_ATTRIBUTE_NAMES,
   IDENTIFIER_ATTRIBUTE_NAMES,
   IDENTIFIER_ATTRIBUTE_PREFIX,
@@ -378,7 +430,10 @@ const SNIPPET_CONSTANTS = {
   TEXT_NODE_TYPE,
   ZERO_WIDTH_CHARACTERS_PATTERN,
   DEFAULT_PLACEHOLDER_PREFIX,
+  AVATAR_ANCESTOR_SELECTOR,
   PLACEHOLDER_RULES,
+  AVATAR_PLACEHOLDER_SOURCE,
+  PICTURE_PLACEHOLDER_SOURCE,
   CHAT_LIST_ENTRY_WRAPPER_SELECTOR,
   CHAT_LIST_ENTRY_SELECTOR,
   CHAT_LIST_ENTRY_CATALOG_SELECTOR,
